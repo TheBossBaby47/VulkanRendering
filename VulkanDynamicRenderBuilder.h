@@ -35,7 +35,7 @@ namespace NCL::Rendering {
 
 		VulkanDynamicRenderBuilder& WithLayerCount(int count);
 
-		VulkanDynamicRenderBuilder& Begin(vk::CommandBuffer  buffer);
+		VulkanDynamicRenderBuilder& BeginRendering(vk::CommandBuffer  buffer);
 	protected:
 		vk::RenderingInfoKHR renderInfo;
 		std::vector< vk::RenderingAttachmentInfoKHR > colourAttachments;

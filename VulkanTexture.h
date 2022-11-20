@@ -6,7 +6,7 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "../../Common/TextureBase.h"
+#include "TextureBase.h"
 #include "SmartTypes.h"
 
 namespace NCL::Rendering {
@@ -15,6 +15,8 @@ namespace NCL::Rendering {
 	class VulkanTexture : public TextureBase	{
 		friend class VulkanRenderer;
 	public:
+
+		VulkanTexture(const std::string& name);
 
 		static UniqueVulkanTexture VulkanCubemapFromFiles(
 			const std::string& negativeXFile, const std::string& positiveXFile, 
@@ -47,10 +49,9 @@ namespace NCL::Rendering {
 		VulkanTexture();
 		void GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout endLayout, vk::PipelineStageFlags endFlags);
 
-		static void	InitTextureDeviceMemory(VulkanTexture& img);
-		static VulkanTexture* GenerateTextureInternal(uint32_t width, uint32_t height, uint32_t mipcount, bool isCube, const std::string& debugName, vk::Format format, vk::ImageAspectFlags aspect, vk::ImageUsageFlags usage, vk::ImageLayout outLayout, vk::PipelineStageFlags pipeType);
-
-		static VulkanTexture* GenerateTextureFromDataInternal(uint32_t width, uint32_t height, uint32_t channelCount, bool isCube, std::vector<char*>dataSrcs, const std::string& debugName);
+		void	InitTextureDeviceMemory(VulkanTexture& img);
+		void	GenerateTextureInternal(uint32_t width, uint32_t height, uint32_t mipcount, bool isCube, const std::string& debugName, vk::Format format, vk::ImageAspectFlags aspect, vk::ImageUsageFlags usage, vk::ImageLayout outLayout, vk::PipelineStageFlags pipeType);
+		void	GenerateTextureFromDataInternal(uint32_t width, uint32_t height, uint32_t channelCount, bool isCube, std::vector<char*>dataSrcs, const std::string& debugName);
 
 		vk::UniqueImageView  GenerateDefaultView(vk::ImageAspectFlags type);
 
