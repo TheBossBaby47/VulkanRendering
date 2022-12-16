@@ -14,11 +14,11 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "VulkanUtils.h"
 #include "VulkanDescriptorSetLayoutBuilder.h"
 
-#include "../../Common/TextureLoader.h"
+#include "TextureLoader.h"
 
 #ifdef _WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
-#include "../../Common/Win32Window.h"
+#include "Win32Window.h"
 using namespace NCL::Win32Code;
 #endif
 
@@ -324,6 +324,34 @@ void	VulkanRenderer::ImageTransitionBarrier(vk::CommandBuffer  cmdBuffer, vk::Im
 
 void	VulkanRenderer::ImageTransitionBarrier(vk::CommandBuffer  buffer, const VulkanTexture* t, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int mipLevel, int layer) {
 	ImageTransitionBarrier(buffer, t->GetImage(), oldLayout, newLayout, aspect, srcStage, dstStage, mipLevel, layer);
+}
+
+void VulkanRenderer::TransitionColourToSampler(VulkanTexture* t, vk::CommandBuffer  buffer) {
+	ImageTransitionBarrier(buffer, t,
+		vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor,
+		vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eFragmentShader);
+}
+
+void VulkanRenderer::TransitionDepthToSampler(VulkanTexture* t, vk::CommandBuffer  buffer, bool doStencil) {
+	vk::ImageAspectFlags flags = doStencil ? vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil : vk::ImageAspectFlagBits::eDepth;
+
+	ImageTransitionBarrier(buffer, t,
+		vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageLayout::eDepthStencilReadOnlyOptimal, flags,
+		vk::PipelineStageFlagBits::eEarlyFragmentTests, vk::PipelineStageFlagBits::eFragmentShader);
+}
+
+void VulkanRenderer::TransitionSamplerToColour(VulkanTexture* t, vk::CommandBuffer  buffer) {
+	ImageTransitionBarrier(buffer, t,
+		vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageAspectFlagBits::eColor,
+		vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eColorAttachmentOutput);
+}
+
+void VulkanRenderer::TransitionSamplerToDepth(VulkanTexture* t, vk::CommandBuffer  buffer, bool doStencil) {
+	vk::ImageAspectFlags flags = doStencil ? vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil : vk::ImageAspectFlagBits::eDepth;
+
+	ImageTransitionBarrier(buffer, t,
+		vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageLayout::eDepthStencilAttachmentOptimal, flags,
+		vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eEarlyFragmentTests);
 }
 
 void	VulkanRenderer::InitCommandPools() {
@@ -687,11 +715,12 @@ void	VulkanRenderer::UpdateImageDescriptor(vk::DescriptorSet set, int bindingNum
 	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 }
 
-void VulkanRenderer::UpdateBufferDescriptor(vk::DescriptorSet set, const VulkanBuffer& data, int bindingSlot, vk::DescriptorType bufferType) {
+void	VulkanRenderer::UpdateBufferDescriptorOffset(vk::DescriptorSet set, const VulkanBuffer& data, int bindingSlot, vk::DescriptorType bufferType, size_t offset, size_t range) {
 	auto descriptorInfo = vk::DescriptorBufferInfo()
 		.setBuffer(*(data.buffer))
-		.setRange(data.requestedSize);
-	
+		.setOffset(offset)
+		.setRange(range);
+
 	auto descriptorWrites = vk::WriteDescriptorSet()
 		.setDescriptorType(bufferType)
 		.setDstSet(set)
@@ -700,6 +729,10 @@ void VulkanRenderer::UpdateBufferDescriptor(vk::DescriptorSet set, const VulkanB
 		.setPBufferInfo(&descriptorInfo);
 
 	device.updateDescriptorSets(1, &descriptorWrites, 0, nullptr);
+}
+
+void VulkanRenderer::UpdateBufferDescriptor(vk::DescriptorSet set, const VulkanBuffer& data, int bindingSlot, vk::DescriptorType bufferType) {
+	UpdateBufferDescriptorOffset(set, data, bindingSlot, bufferType, 0, data.requestedSize);
 }
 
 VulkanBuffer VulkanRenderer::CreateBuffer(size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties) {

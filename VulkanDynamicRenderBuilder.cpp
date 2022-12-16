@@ -63,7 +63,7 @@ VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::WithSecondaryBuffers() {
 	return *this;
 }
 
-VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::Begin(vk::CommandBuffer  buffer) {
+VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::BeginRendering(vk::CommandBuffer  buffer) {
 	renderInfo.setLayerCount(layerCount)
 		.setRenderArea(renderArea)
 		.setColorAttachments(colourAttachments)

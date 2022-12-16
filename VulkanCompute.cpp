@@ -7,7 +7,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #include "Precompiled.h"
 #include "VulkanCompute.h"
-#include "../../Common/Assets.h"
+#include "Assets.h"
 
 using namespace NCL::Rendering;
 
