@@ -6,7 +6,7 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "MeshGeometry.h"
+#include "../NCLCoreClasses/MeshGeometry.h"
 #include "VulkanBuffers.h"
 
 namespace NCL::Rendering {
