@@ -68,7 +68,6 @@ vk::UniqueDescriptorSetLayout VulkanDescriptorSetLayoutBuilder::Build(vk::Device
 		createInfo.flags |= vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
 	}
 	
-
 	vk::UniqueDescriptorSetLayout layout = std::move(device.createDescriptorSetLayoutUnique(createInfo));
 	if (!debugName.empty()) {
 		Vulkan::SetDebugName(device, vk::ObjectType::eDescriptorSetLayout, Vulkan::GetVulkanHandle(*layout), debugName);

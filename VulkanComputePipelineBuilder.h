@@ -20,10 +20,10 @@ namespace NCL::Rendering {
 		VulkanComputePipelineBuilder& WithLayout(vk::PipelineLayout layout);
 
 		VulkanComputePipelineBuilder& WithPushConstant(vk::ShaderStageFlags flags, uint32_t offset, uint32_t size);
-		VulkanComputePipelineBuilder& WithDescriptorSetLayout(vk::DescriptorSetLayout layout);
+		VulkanComputePipelineBuilder& WithDescriptorSetLayout(uint32_t slot, vk::DescriptorSetLayout layout);
 		VulkanComputePipelineBuilder& WithShader(UniqueVulkanCompute& shader);
 
-		VulkanPipeline	Build(vk::Device device, vk::PipelineCache cache);
+		VulkanPipeline	Build(vk::Device device, vk::PipelineCache cache = {});
 	protected:
 		vk::PipelineLayout	layout;
 		vk::ComputePipelineCreateInfo			pipelineCreate;

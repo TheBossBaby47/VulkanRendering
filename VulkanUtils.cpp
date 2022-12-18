@@ -11,6 +11,7 @@ using namespace NCL;
 using namespace Rendering;
 
 vk::DispatchLoaderDynamic* NCL::Rendering::Vulkan::dispatcher = nullptr;
+std::map<vk::Device, vk::DescriptorSetLayout > NCL::Rendering::Vulkan::nullDescriptors;
 
 void Vulkan::SetDebugName(vk::Device device, vk::ObjectType t, uint64_t handle, const std::string& debugName) {
 	device.setDebugUtilsObjectNameEXT(
@@ -30,4 +31,8 @@ void Vulkan::BeginDebugArea(vk::CommandBuffer b, const std::string& name) {
 
 void Vulkan::EndDebugArea(vk::CommandBuffer b) {
 	b.endDebugUtilsLabelEXT(*Vulkan::dispatcher);
+}
+
+void Vulkan::SetNullDescriptor(vk::Device device, vk::DescriptorSetLayout layout) {
+	nullDescriptors.insert({ device, layout });
 }

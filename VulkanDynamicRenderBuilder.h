@@ -30,7 +30,6 @@ namespace NCL::Rendering {
 
 		VulkanDynamicRenderBuilder& WithSecondaryBuffers();
 
-
 		VulkanDynamicRenderBuilder& WithRenderArea(vk::Rect2D area);
 
 		VulkanDynamicRenderBuilder& WithLayerCount(int count);

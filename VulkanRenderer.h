@@ -170,6 +170,9 @@ namespace NCL::Rendering {
 		uint32_t			gfxQueueIndex;
 		uint32_t			gfxPresentIndex;
 
+		int	desiredMajorVersion;
+		int	desiredMaxVersion;
+
 		std::vector<const char*> extensionList;
 		std::vector<const char*> layerList;
 

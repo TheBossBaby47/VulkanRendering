@@ -21,8 +21,12 @@ VulkanComputePipelineBuilder& VulkanComputePipelineBuilder::WithPushConstant(vk:
 	return *this;
 }
 
-VulkanComputePipelineBuilder& VulkanComputePipelineBuilder::WithDescriptorSetLayout(vk::DescriptorSetLayout layout) {
-	allLayouts.emplace_back(layout);
+VulkanComputePipelineBuilder& VulkanComputePipelineBuilder::WithDescriptorSetLayout(uint32_t slot, vk::DescriptorSetLayout layout) {
+	assert(slot < 32);
+	while (allLayouts.size() <= slot) {
+		allLayouts.push_back(vk::DescriptorSetLayout());
+	}
+	allLayouts[slot] = layout;
 	return *this;
 }
 
@@ -39,6 +43,14 @@ VulkanComputePipelineBuilder& VulkanComputePipelineBuilder::WithLayout(vk::Pipel
 
 VulkanPipeline	VulkanComputePipelineBuilder::Build(vk::Device device, vk::PipelineCache cache) {
 	VulkanPipeline output;
+
+	//Patch any invalid descriptors to be empty
+	vk::DescriptorSetLayout nullLayout = Vulkan::nullDescriptors[device];
+	for (int i = 0; i < allLayouts.size(); ++i) {
+		if (!allLayouts[i]) {
+			allLayouts[i] = nullLayout;
+		}
+	}
 
 	vk::PipelineLayoutCreateInfo pipeLayoutCreate = vk::PipelineLayoutCreateInfo()
 		.setSetLayoutCount((uint32_t)allLayouts.size())

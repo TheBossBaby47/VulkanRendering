@@ -57,14 +57,15 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
     <vulkan/vulkan.hpp>
     <memory>
     <unordered_set>
+    <map>
     <vector>
+    <set>
     <string>
     <fstream>
     <iostream>
     <string>
     <iosfwd>
-    <set>
-
+    
     <Matrix2.h>
     <Matrix3.h>
     <Matrix4.h>

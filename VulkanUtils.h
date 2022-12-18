@@ -19,4 +19,6 @@ namespace NCL::Rendering::Vulkan {
 		void EndDebugArea(vk::CommandBuffer b);
 
 		extern vk::DispatchLoaderDynamic* dispatcher;
+		void SetNullDescriptor(vk::Device device, vk::DescriptorSetLayout layout);
+		extern std::map<vk::Device, vk::DescriptorSetLayout > nullDescriptors;
 }

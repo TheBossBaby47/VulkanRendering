@@ -125,8 +125,12 @@ VulkanPipelineBuilder& VulkanPipelineBuilder::WithColourFormats(const std::vecto
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithDescriptorSetLayout(vk::DescriptorSetLayout layout) {
-	allLayouts.emplace_back(layout);
+VulkanPipelineBuilder& VulkanPipelineBuilder::WithDescriptorSetLayout(uint32_t slot, vk::DescriptorSetLayout layout) {
+	assert(slot < 32);
+	while (allLayouts.size() <= slot) {
+		allLayouts.push_back(vk::DescriptorSetLayout());
+	}
+	allLayouts[slot] = layout;
 	return *this;
 }
 
@@ -143,6 +147,14 @@ VulkanPipeline	VulkanPipelineBuilder::Build(vk::Device device, vk::PipelineCache
 		}
 		else {
 			WithBlendState(vk::BlendFactor::eSrcAlpha, vk::BlendFactor::eOneMinusSrcAlpha, false);
+		}
+	}
+
+	//Patch any invalid descriptors to be empty
+	vk::DescriptorSetLayout nullLayout = Vulkan::nullDescriptors[device];
+	for (int i = 0; i < allLayouts.size(); ++i) {
+		if (!allLayouts[i]) {
+			allLayouts[i] = nullLayout;
 		}
 	}
 

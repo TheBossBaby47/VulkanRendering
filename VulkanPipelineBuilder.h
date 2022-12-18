@@ -36,7 +36,7 @@ namespace NCL::Rendering {
 
 		VulkanPipelineBuilder& WithPushConstant(vk::ShaderStageFlags flags, uint32_t offset, uint32_t size);
 
-		VulkanPipelineBuilder& WithDescriptorSetLayout(vk::DescriptorSetLayout layout);
+		VulkanPipelineBuilder& WithDescriptorSetLayout(uint32_t slot, vk::DescriptorSetLayout layout);
 
 		VulkanPipelineBuilder& WithPass(vk::RenderPass& renderPass);
 
@@ -44,7 +44,7 @@ namespace NCL::Rendering {
 		VulkanPipelineBuilder& WithDepthFormat(vk::Format depthFormat);
 		VulkanPipelineBuilder& WithColourFormats(const std::vector<vk::Format>& formats);
 
-		VulkanPipeline	Build(vk::Device device, vk::PipelineCache cache);
+		VulkanPipeline	Build(vk::Device device, vk::PipelineCache cache = {});
 
 	protected:
 		vk::GraphicsPipelineCreateInfo				pipelineCreate;
