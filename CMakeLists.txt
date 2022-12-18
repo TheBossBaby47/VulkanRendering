@@ -4,7 +4,6 @@ set(PROJECT_NAME VulkanRendering)
 # Source groups
 ################################################################################
 set(Header_Files
-    "Precompiled.h"
     "VulkanUtils.h"
     "VulkanBuffers.h"
     "VulkanBVHBuilder.h"
@@ -26,7 +25,6 @@ set(Header_Files
 source_group("Header Files" FILES ${Header_Files})
 
 set(Source_Files
-    "Precompiled.cpp"
 	"VulkanUtils.cpp"
     "VulkanBuffers.cpp"
     "VulkanBVHBuilder.cpp"
@@ -56,86 +54,47 @@ set(ALL_FILES
 add_library(${PROJECT_NAME} STATIC ${ALL_FILES})
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE
-    "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/Precompiled.h>"
-)
+    <vulkan/vulkan.hpp>
+    <memory>
+    <unordered_set>
+    <vector>
+    <string>
+    <fstream>
+    <iostream>
+    <string>
+    <iosfwd>
+    <set>
 
-use_props(${PROJECT_NAME} "${CMAKE_CONFIGURATION_TYPES}" "${DEFAULT_CXX_PROPS}")
-set(ROOT_NAMESPACE VulkanRendering)
+    <Matrix2.h>
+    <Matrix3.h>
+    <Matrix4.h>
+
+    <Vector2.h>
+    <Vector3.h>
+    <Vector4.h>
+
+    <Quaternion.h>
+)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION_RELEASE "TRUE"
-)
-################################################################################
-# MSVC runtime library
-################################################################################
-get_property(MSVC_RUNTIME_LIBRARY_DEFAULT TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY)
-string(CONCAT "MSVC_RUNTIME_LIBRARY_STR"
-    $<$<CONFIG:Debug>:
-        MultiThreadedDebugDLL
-    >
-    $<$<NOT:$<OR:$<CONFIG:Debug>>>:${MSVC_RUNTIME_LIBRARY_DEFAULT}>
-)
-set_target_properties(${PROJECT_NAME} PROPERTIES MSVC_RUNTIME_LIBRARY ${MSVC_RUNTIME_LIBRARY_STR})
-
-################################################################################
-# Compile definitions
-################################################################################
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-    "$<$<CONFIG:Debug>:"
-        "VK_PROTOTYPES"
-    ">"
-    "NOMINMAX;"
-    "_MBCS"
 )
 
 ################################################################################
 # Compile and link options
 ################################################################################
-if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        $<$<CONFIG:Debug>:
-            /Od
-        >
-        $<$<CONFIG:Release>:
-            /O2;
-            /Oi;
-            /Gy
-        >
-        /permissive-;
-        /std:c++latest;
-        /sdl;
-        /W3;
-        ${DEFAULT_CXX_DEBUG_INFORMATION_FORMAT};
-        ${DEFAULT_CXX_EXCEPTION_HANDLING}
-    )
-    target_link_options(${PROJECT_NAME} PRIVATE
-        $<$<CONFIG:Release>:
-            /OPT:REF;
-            /OPT:ICF
-        >
-    )
-endif()
-
 target_include_directories (${PROJECT_NAME} 
     PUBLIC ${VULKAN_INCLUDE_DIRS}
 )	
 
 target_include_directories (${PROJECT_NAME} 
     PUBLIC ${Vulkan_INCLUDE_DIR}
+    PUBLIC ${CMAKE_SOURCE_DIR}/NCLCoreClasses
 )	
 
 ################################################################################
 # Dependencies
 ################################################################################
-set(ADDITIONAL_LIBRARY_DEPENDENCIES
-    "$<$<CONFIG:Debug>:"
-    ">"
-)
-
-include_directories("../NCLCoreClasses/")
-include_directories("../VulkanRendering/")
-
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 target_link_libraries(${PROJECT_NAME} PUBLIC "${ADDITIONAL_LIBRARY_DEPENDENCIES}")
 target_link_libraries(${PROJECT_NAME} PRIVATE ${Vulkan_LIBRARIES})
 

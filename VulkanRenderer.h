@@ -9,17 +9,8 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "../NCLCoreClasses/RendererBase.h"
 #include "../NCLCoreClasses/Maths.h"
 
-#ifdef _WIN32
-#define VK_USE_PLATFORM_WIN32_KHR
-#endif
-#include "vulkan/vulkan.hpp"
-
 #include "VulkanPipeline.h"
-
 #include "SmartTypes.h"
-
-#include <vector>
-#include <string>
 
 using std::string;
 

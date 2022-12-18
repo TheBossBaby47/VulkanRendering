@@ -5,7 +5,6 @@ Author:Rich Davison
 Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
-#include "Precompiled.h"
 #include "VulkanMesh.h"
 #include "VulkanRenderer.h"
 #include "VulkanUtils.h"

@@ -6,8 +6,8 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
-namespace NCL::Rendering::Vulkan {
 
+namespace NCL::Rendering::Vulkan {
 		template <typename T>
 		uint64_t GetVulkanHandle(T const& cppHandle) {
 			return uint64_t(static_cast<T::CType>(cppHandle));

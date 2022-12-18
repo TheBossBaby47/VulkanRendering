@@ -7,6 +7,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "../NCLCoreClasses/ShaderBase.h"
+
 namespace NCL::Rendering {
 	class VulkanShader : public ShaderBase {
 	public:

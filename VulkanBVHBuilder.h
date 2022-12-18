@@ -7,8 +7,6 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "VulkanRenderer.h"
-#include <unordered_set>
-#include <vector>
 
 namespace NCL::Maths {
 	class Matrix4;

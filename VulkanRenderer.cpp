@@ -5,7 +5,6 @@ Author:Rich Davison
 Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
-#include "Precompiled.h"
 #include "VulkanRenderer.h"
 #include "VulkanMesh.h"
 #include "VulkanTexture.h"
@@ -17,7 +16,6 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "TextureLoader.h"
 
 #ifdef _WIN32
-#define VK_USE_PLATFORM_WIN32_KHR
 #include "Win32Window.h"
 using namespace NCL::Win32Code;
 #endif
@@ -28,8 +26,12 @@ using namespace Rendering;
 vk::PhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
 
 VulkanRenderer::VulkanRenderer(Window& window, VulkanInitInfo info) : RendererBase(window), initInfo(info) {
-	depthBuffer		= nullptr;
-	frameBuffers	= nullptr;
+	depthBuffer			= nullptr;
+	frameBuffers		= nullptr;
+	currentSwap			= 0;
+	computeQueueIndex	= 0;
+	gfxQueueIndex		= 0;
+	gfxPresentIndex		= 0;
 
 	extensionList.insert(extensionList.end(), info.extensions.begin(), info.extensions.end());
 	layerList.insert(layerList.end(), info.layers.begin(), info.layers.end());
@@ -128,6 +130,9 @@ bool	VulkanRenderer::InitPhysicalDevice() {
 }
 
 bool VulkanRenderer::InitGPUDevice() {
+	InitSurface();
+	InitDeviceQueues();
+
 	extensionList.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 	extensionList.push_back("VK_KHR_dynamic_rendering");
 	extensionList.push_back("VK_KHR_maintenance4");
@@ -166,8 +171,7 @@ bool VulkanRenderer::InitGPUDevice() {
 		initInfo.deviceModifier(createInfo, gpu);
 	}
 
-	InitSurface();
-	InitDeviceQueues();
+
 
 	device = gpu.createDevice(createInfo);
 	deviceQueue = device.getQueue(gfxQueueIndex, 0);
