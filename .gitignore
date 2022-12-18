@@ -18,3 +18,9 @@
 /VulkanRendering.vcxproj
 /VulkanRendering.vcxproj.filters
 /cmake_install.cmake
+/CMakeFiles/VulkanRendering.dir/MinSizeRel/*.hxx
+/CMakeFiles/VulkanRendering.dir/RelWithDebInfo/*.hxx
+/VulkanRendering.dir/Release/*.recipe
+/VulkanRendering.dir/Release/VulkanRendering.tlog/*.tlog
+/VulkanRendering.dir/Release/VulkanRendering.tlog/*.lastbuildstate
+/VulkanRendering.dir/Release/*.txt
