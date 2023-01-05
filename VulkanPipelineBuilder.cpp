@@ -134,6 +134,11 @@ VulkanPipelineBuilder& VulkanPipelineBuilder::WithDescriptorSetLayout(uint32_t s
 	return *this;
 }
 
+VulkanPipelineBuilder& VulkanPipelineBuilder::WithDescriptorBuffers() {
+	pipelineCreate.flags |= vk::PipelineCreateFlagBits::eDescriptorBufferEXT;
+	return *this;
+}
+
 VulkanPipeline	VulkanPipelineBuilder::Build(vk::Device device, vk::PipelineCache cache) {
 	vk::PipelineLayoutCreateInfo pipeLayoutCreate = vk::PipelineLayoutCreateInfo()
 		.setSetLayouts(allLayouts)

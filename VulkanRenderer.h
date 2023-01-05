@@ -22,18 +22,6 @@ namespace NCL::Rendering {
 	struct VulkanBuffer;
 	struct BufferedData;
 
-	using DeviceCreateModifier = void(*)(vk::DeviceCreateInfo&, vk::PhysicalDevice);
-
-	struct VulkanInitInfo {
-		std::vector<const char*> extensions;
-		std::vector<const char*> layers;
-
-		int majorVersion = 1;
-		int minorVersion = 1;
-
-		DeviceCreateModifier deviceModifier;
-	};
-
 	class VulkanRenderer : public RendererBase {
 		friend class VulkanMesh;
 		friend class VulkanTexture;
@@ -43,12 +31,15 @@ namespace NCL::Rendering {
 		friend class VulkanRenderPassBuilder;
 		friend class VulkanBVHBuilder;
 	public:
-		VulkanRenderer(Window& window, VulkanInitInfo info = VulkanInitInfo());
+		VulkanRenderer(Window& window);
 		~VulkanRenderer();
 
 		vk::ClearColorValue ClearColour(float r, float g, float b, float a = 1.0f) {
 			return vk::ClearColorValue(std::array<float, 4>{r, g, b, a});
 		}
+
+		virtual bool Init();
+		virtual bool HasInitialised() const { return device; }
 
 	protected:
 		void OnWindowResize(int w, int h)	override;
@@ -139,7 +130,7 @@ namespace NCL::Rendering {
 
 	//private: 
 		void	InitCommandPools();
-		bool	InitInstance(int major, int minor);
+		bool	InitInstance();
 		bool	InitPhysicalDevice();
 		bool	InitGPUDevice();
 		bool	InitSurface();
@@ -148,7 +139,7 @@ namespace NCL::Rendering {
 		bool	InitDeviceQueues();
 		bool	CreateDefaultFrameBuffers();
 
-		VulkanInitInfo initInfo;
+		virtual void SetupDeviceInfo(vk::DeviceCreateInfo& info) {}
 
 		vk::SurfaceKHR		surface;
 		vk::Format			surfaceFormat;
@@ -170,11 +161,16 @@ namespace NCL::Rendering {
 		uint32_t			gfxQueueIndex;
 		uint32_t			gfxPresentIndex;
 
-		int	desiredMajorVersion;
-		int	desiredMaxVersion;
 
-		std::vector<const char*> extensionList;
-		std::vector<const char*> layerList;
+		//Initialisation Info
+		std::vector<const char*> deviceExtensions;
+		std::vector<const char*> deviceLayers;
+
+		std::vector<const char*>	instanceExtensions;
+		std::vector<const char*>	instanceLayers;
+
+		int majorVersion = 1;
+		int minorVersion = 1;
 
 		/*
 		* RayTracing Stuff!

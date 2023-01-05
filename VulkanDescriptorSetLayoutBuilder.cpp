@@ -53,12 +53,17 @@ VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithBindless
 	return *this;
 }
 
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithDescriptorBufferAccess() {
+	usingDescriptorBuffer = true;
+	return *this;
+}
+
 vk::UniqueDescriptorSetLayout VulkanDescriptorSetLayoutBuilder::Build(vk::Device device) {
 	createInfo.setBindings(addedBindings);
 	vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsInfo;
 	std::vector< vk::DescriptorBindingFlags> bindingFlags;
 
-	if (usingBindless >= 0) {
+	if (usingBindless) {
 		for (int i = 0; i < addedBindings.size(); ++i) {
 			bindingFlags.push_back(vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount | vk::DescriptorBindingFlagBits::eUpdateAfterBind);
 		}
@@ -66,6 +71,9 @@ vk::UniqueDescriptorSetLayout VulkanDescriptorSetLayoutBuilder::Build(vk::Device
 		createInfo.pNext = &bindingFlagsInfo;
 
 		createInfo.flags |= vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
+	}
+	if (usingDescriptorBuffer) {
+		createInfo.flags |= vk::DescriptorSetLayoutCreateFlagBits::eDescriptorBufferEXT;
 	}
 	
 	vk::UniqueDescriptorSetLayout layout = std::move(device.createDescriptorSetLayoutUnique(createInfo));

@@ -12,7 +12,11 @@ namespace NCL::Rendering {
 
 	class VulkanDescriptorSetLayoutBuilder	{
 	public:
-		VulkanDescriptorSetLayoutBuilder(const std::string& name = "") { debugName = name; usingBindless = -1; };
+		VulkanDescriptorSetLayoutBuilder(const std::string& name = "") { 
+			debugName = name; 
+			usingBindless = false; 
+			usingDescriptorBuffer = false;
+		};
 		~VulkanDescriptorSetLayoutBuilder() {};
 
 		VulkanDescriptorSetLayoutBuilder& WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll);
@@ -20,12 +24,14 @@ namespace NCL::Rendering {
 		VulkanDescriptorSetLayoutBuilder& WithStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll);
 
 		VulkanDescriptorSetLayoutBuilder& WithBindlessAccess();//Buffers after this are bindless!
+		VulkanDescriptorSetLayoutBuilder& WithDescriptorBufferAccess();
 
 		vk::UniqueDescriptorSetLayout Build(vk::Device device);
 
 	protected:
 		std::string	debugName;
-		int usingBindless;
+		bool usingBindless;
+		bool usingDescriptorBuffer;
 		std::vector< vk::DescriptorSetLayoutBinding> addedBindings;
 
 		vk::DescriptorSetLayoutCreateInfo createInfo;

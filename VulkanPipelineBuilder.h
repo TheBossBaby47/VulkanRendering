@@ -44,6 +44,8 @@ namespace NCL::Rendering {
 		VulkanPipelineBuilder& WithDepthFormat(vk::Format depthFormat);
 		VulkanPipelineBuilder& WithColourFormats(const std::vector<vk::Format>& formats);
 
+		VulkanPipelineBuilder& WithDescriptorBuffers();
+
 		VulkanPipeline	Build(vk::Device device, vk::PipelineCache cache = {});
 
 	protected:

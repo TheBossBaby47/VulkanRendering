@@ -25,7 +25,7 @@ using namespace Rendering;
 
 vk::PhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
 
-VulkanRenderer::VulkanRenderer(Window& window, VulkanInitInfo info) : RendererBase(window), initInfo(info) {
+VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
 	depthBuffer			= nullptr;
 	frameBuffers		= nullptr;
 	currentSwap			= 0;
@@ -33,27 +33,26 @@ VulkanRenderer::VulkanRenderer(Window& window, VulkanInitInfo info) : RendererBa
 	gfxQueueIndex		= 0;
 	gfxPresentIndex		= 0;
 
-	extensionList.insert(extensionList.end(), info.extensions.begin(), info.extensions.end());
-	layerList.insert(layerList.end(), info.layers.begin(), info.layers.end());
+	majorVersion		= 1;
+	minorVersion		= 1;
 
-	InitInstance(info.majorVersion, info.minorVersion);
+	deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+	deviceExtensions.push_back("VK_KHR_dynamic_rendering");
+	deviceExtensions.push_back("VK_KHR_maintenance4");
 
-	InitPhysicalDevice();
-	
-	InitGPUDevice();
+	deviceExtensions.push_back("VK_KHR_depth_stencil_resolve");
+	deviceExtensions.push_back("VK_KHR_create_renderpass2");
+	deviceLayers.push_back("VK_LAYER_LUNARG_standard_validation");
 
-	InitCommandPools();
-	InitDefaultDescriptorPool();
 
-	VulkanTexture::SetRenderer(this);
-	TextureLoader::RegisterAPILoadFunction(VulkanTexture::TextureFromFilenameLoader);
+	instanceExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+	instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+	instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#ifdef WIN32
+	instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#endif
 
-	window.SetRenderer(this);	
-	OnWindowResize((int)hostWindow.GetScreenSize().x, (int)hostWindow.GetScreenSize().y);
-
-	pipelineCache = device.createPipelineCache(vk::PipelineCacheCreateInfo());
-
-	defaultCmdBuffer = swapChainList[currentSwap]->frameCmds;
+	instanceLayers.push_back("VK_LAYER_KHRONOS_validation");
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -82,22 +81,33 @@ VulkanRenderer::~VulkanRenderer() {
 	delete[] frameBuffers;
 }
 
-bool VulkanRenderer::InitInstance(int major, int minor) {
+bool VulkanRenderer::Init() {
+	InitInstance();
+
+	InitPhysicalDevice();
+
+	InitGPUDevice();
+
+	InitCommandPools();
+	InitDefaultDescriptorPool();
+
+	VulkanTexture::SetRenderer(this);
+	TextureLoader::RegisterAPILoadFunction(VulkanTexture::TextureFromFilenameLoader);
+
+	hostWindow.SetRenderer(this);
+	OnWindowResize((int)hostWindow.GetScreenSize().x, (int)hostWindow.GetScreenSize().y);
+
+	pipelineCache = device.createPipelineCache(vk::PipelineCacheCreateInfo());
+
+	defaultCmdBuffer = swapChainList[currentSwap]->frameCmds;
+
+	return true;
+}
+
+bool VulkanRenderer::InitInstance() {
 	vk::ApplicationInfo appInfo = vk::ApplicationInfo(this->hostWindow.GetTitle().c_str());
 
-	appInfo.apiVersion = VK_MAKE_VERSION(major, minor, 0);
-
-	vector<const char*> instanceExtensions;
-	vector<const char*> instanceLayers;
-
-	instanceExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-	instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-	instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#ifdef WIN32
-	instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#endif
-
-	instanceLayers.push_back("VK_LAYER_KHRONOS_validation");
+	appInfo.apiVersion = VK_MAKE_VERSION(majorVersion, minorVersion, 0);
 
 	vk::InstanceCreateInfo instanceInfo = vk::InstanceCreateInfo(vk::InstanceCreateFlags(), &appInfo)
 		.setEnabledExtensionCount((uint32_t)instanceExtensions.size())
@@ -133,14 +143,6 @@ bool VulkanRenderer::InitGPUDevice() {
 	InitSurface();
 	InitDeviceQueues();
 
-	extensionList.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-	extensionList.push_back("VK_KHR_dynamic_rendering");
-	extensionList.push_back("VK_KHR_maintenance4");
-
-	extensionList.push_back("VK_KHR_depth_stencil_resolve");
-	extensionList.push_back("VK_KHR_create_renderpass2");
-	layerList.push_back("VK_LAYER_LUNARG_standard_validation");
-
 	float queuePriority = 0.0f;
 	vk::DeviceQueueCreateInfo queueInfo = vk::DeviceQueueCreateInfo()
 		.setQueueCount(1)
@@ -153,25 +155,24 @@ bool VulkanRenderer::InitGPUDevice() {
 		.setShaderClipDistance(true)
 		.setShaderCullDistance(true);
 
+	vk::PhysicalDeviceFeatures2 deviceFeatures;
+	deviceFeatures.setFeatures(features);
 
-	vk::PhysicalDeviceDynamicRenderingFeaturesKHR dynamicRendering;
-	dynamicRendering.dynamicRendering = true;
+	vk::PhysicalDeviceDynamicRenderingFeaturesKHR dynamicRendering(true);
+	deviceFeatures.pNext = &dynamicRendering;
 	
 	vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
 		.setQueueCreateInfoCount(1)
-		.setPNext(&dynamicRendering)
 		.setPQueueCreateInfos(&queueInfo)
-		.setPEnabledFeatures(&features)
-		.setEnabledLayerCount((uint32_t)layerList.size())
-		.setPpEnabledLayerNames(layerList.data())
-		.setEnabledExtensionCount((uint32_t)extensionList.size())
-		.setPpEnabledExtensionNames(extensionList.data());
+		.setEnabledLayerCount((uint32_t)deviceLayers.size())
+		.setPpEnabledLayerNames(deviceLayers.data())
+		.setEnabledExtensionCount((uint32_t)deviceExtensions.size())
+		.setPpEnabledExtensionNames(deviceExtensions.data());
 
-	if (initInfo.deviceModifier) {
-		initInfo.deviceModifier(createInfo, gpu);
-	}
+	SetupDeviceInfo(createInfo);
 
-
+	dynamicRendering.pNext = (void*)createInfo.pNext;
+	createInfo.pNext = &deviceFeatures;
 
 	device = gpu.createDevice(createInfo);
 	deviceQueue = device.getQueue(gfxQueueIndex, 0);
