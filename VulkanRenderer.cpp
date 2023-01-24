@@ -141,7 +141,7 @@ bool	VulkanRenderer::InitPhysicalDevice() {
 
 bool VulkanRenderer::InitGPUDevice() {
 	InitSurface();
-	InitDeviceQueues();
+	InitDeviceQueueIndices();
 
 	float queuePriority = 0.0f;
 	vk::DeviceQueueCreateInfo queueInfo = vk::DeviceQueueCreateInfo()
@@ -175,7 +175,12 @@ bool VulkanRenderer::InitGPUDevice() {
 	createInfo.pNext = &deviceFeatures;
 
 	device = gpu.createDevice(createInfo);
-	deviceQueue = device.getQueue(gfxQueueIndex, 0);
+
+	gfxQueue		= device.getQueue(gfxQueueIndex, 0);
+	computeQueue	= device.getQueue(computeQueueIndex, 0);
+	copyQueue		= device.getQueue(copyQueueIndex, 0);
+	presentQueue	= device.getQueue(gfxPresentIndex, 0);
+
 	deviceMemoryProperties = gpu.getMemoryProperties();
 
 	delete Vulkan::dispatcher;
@@ -430,7 +435,7 @@ void 	VulkanRenderer::SubmitCmdBuffer(vk::CommandBuffer  buffer) {
 	submitInfo.setCommandBufferCount(1);
 	submitInfo.setPCommandBuffers(&buffer);
 
-	deviceQueue.submit(submitInfo, {});
+	gfxQueue.submit(submitInfo, {});
 }
 
 vk::Fence 	VulkanRenderer::SubmitCmdBufferFence(vk::CommandBuffer  buffer) {
@@ -449,18 +454,19 @@ vk::Fence 	VulkanRenderer::SubmitCmdBufferFence(vk::CommandBuffer  buffer) {
 	submitInfo.setCommandBufferCount(1);
 	submitInfo.setPCommandBuffers(&buffer);
 
-	deviceQueue.submit(submitInfo, fence);
+	gfxQueue.submit(submitInfo, fence);
 
 	return fence;
 }
 
-bool VulkanRenderer::InitDeviceQueues() {
-	vector<vk::QueueFamilyProperties> deviceQueueProps = gpu.getQueueFamilyProperties();
+bool VulkanRenderer::InitDeviceQueueIndices() {
+	deviceQueueProps = gpu.getQueueFamilyProperties();
 
 	VkBool32 supportsPresent = false;
 	gfxQueueIndex		= -1;
-	gfxPresentIndex		= -1;
 	computeQueueIndex	= -1;
+	copyQueueIndex		= -1;
+	gfxPresentIndex		= -1;
 
 	for (unsigned int i = 0; i < deviceQueueProps.size(); ++i) {
 		supportsPresent = gpu.getSurfaceSupportKHR(i, surface);
@@ -468,8 +474,11 @@ bool VulkanRenderer::InitDeviceQueues() {
 		if (computeQueueIndex == -1 && deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eCompute) {
 			computeQueueIndex = i;
 		}
+		if (copyQueueIndex == -1 && deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eTransfer) {
+			copyQueueIndex = i;
+		}
 
-		if (deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eGraphics) {
+		if (gfxQueueIndex == -1 && deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eGraphics) {
 			gfxQueueIndex = i;
 			if (supportsPresent && gfxPresentIndex == -1) {
 				gfxPresentIndex = i;
@@ -477,17 +486,20 @@ bool VulkanRenderer::InitDeviceQueues() {
 		}
 	}
 
-	if (gfxPresentIndex == -1) {
-		for (unsigned int i = 0; i < deviceQueueProps.size(); ++i) {
-			supportsPresent = gpu.getSurfaceSupportKHR(i, surface);
-			if (supportsPresent) {
-				gfxPresentIndex = i;
-				break;
-			}
-		}
-	}
+	//if (gfxPresentIndex == -1) {
+	//	for (unsigned int i = 0; i < deviceQueueProps.size(); ++i) {
+	//		supportsPresent = gpu.getSurfaceSupportKHR(i, surface);
+	//		if (supportsPresent) {
+	//			gfxPresentIndex = i;
+	//			break;
+	//		}
+	//	}
+	//}
 
-	if (gfxQueueIndex == -1 || gfxPresentIndex == -1 || computeQueueIndex == -1) {
+	if (gfxQueueIndex == -1		|| 
+		gfxPresentIndex == -1   || 
+		computeQueueIndex == -1 ||
+		copyQueueIndex == -1) {
 		return false;
 	}
 
@@ -574,7 +586,7 @@ void VulkanRenderer::SwapBuffers() {
 		SubmitCmdBufferWait(cmds);
 		device.freeCommandBuffers(commandPool, cmds);
 
-		vk::Result presentResult = deviceQueue.presentKHR(vk::PresentInfoKHR(0, nullptr, 1, &swapChain, &currentSwap, nullptr));
+		vk::Result presentResult = gfxQueue.presentKHR(vk::PresentInfoKHR(0, nullptr, 1, &swapChain, &currentSwap, nullptr));
 
 		presentSempaphore = device.createSemaphoreUnique(vk::SemaphoreCreateInfo());
 		presentFence	  = device.createFenceUnique(vk::FenceCreateInfo());

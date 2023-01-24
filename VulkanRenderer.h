@@ -136,7 +136,7 @@ namespace NCL::Rendering {
 		bool	InitSurface();
 		uint32_t	InitBufferChain(vk::CommandBuffer  cmdBuffer);
 
-		bool	InitDeviceQueues();
+		bool	InitDeviceQueueIndices();
 		bool	CreateDefaultFrameBuffers();
 
 		virtual void SetupDeviceInfo(vk::DeviceCreateInfo& info) {}
@@ -156,15 +156,20 @@ namespace NCL::Rendering {
 		vk::PhysicalDeviceProperties		deviceProperties;
 		vk::PhysicalDeviceMemoryProperties	deviceMemoryProperties;
 
-		vk::Queue			deviceQueue;
-		uint32_t			computeQueueIndex;
-		uint32_t			gfxQueueIndex;
-		uint32_t			gfxPresentIndex;
+		vk::Queue			gfxQueue;
+		vk::Queue			computeQueue;
+		vk::Queue			copyQueue;
+		vk::Queue			presentQueue;
 
+		uint32_t			gfxQueueIndex;
+		uint32_t			computeQueueIndex;
+		uint32_t			copyQueueIndex;
+		uint32_t			gfxPresentIndex;
 
 		//Initialisation Info
 		std::vector<const char*> deviceExtensions;
 		std::vector<const char*> deviceLayers;
+		std::vector<vk::QueueFamilyProperties> deviceQueueProps;
 
 		std::vector<const char*>	instanceExtensions;
 		std::vector<const char*>	instanceLayers;
