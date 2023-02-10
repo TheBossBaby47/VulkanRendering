@@ -11,7 +11,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 #include "VulkanPipeline.h"
 #include "SmartTypes.h"
-
+#include "vma/vk_mem_alloc.h"
 using std::string;
 
 namespace NCL::Rendering {
@@ -20,7 +20,10 @@ namespace NCL::Rendering {
 	class VulkanCompute;
 	class VulkanTexture;
 	struct VulkanBuffer;
+	struct VulkanMemory;
+	struct VulkanAllocation;
 	struct BufferedData;
+
 
 	class VulkanRenderer : public RendererBase {
 		friend class VulkanMesh;
@@ -58,20 +61,16 @@ namespace NCL::Rendering {
 
 		vk::UniqueDescriptorSet BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool = {}, uint32_t variableDescriptorCount = 0);
 
-
-		void	UpdateBufferDescriptorOffset(vk::DescriptorSet set, const VulkanBuffer& data, int bindingSlot, vk::DescriptorType bufferType, size_t offset, size_t range);
 		void	UpdateBufferDescriptor(vk::DescriptorSet set, const VulkanBuffer& data, int bindingSlot, vk::DescriptorType bufferType);
 		void	UpdateImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
 
 		void	ImageTransitionBarrier(vk::CommandBuffer  buffer, vk::Image i, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int mipLevel = 0, int layer = 0 );
-		void	ImageTransitionBarrier(vk::CommandBuffer  buffer, const VulkanTexture* t, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int mipLevel = 0, int layer = 0);
-	
+
 		void TransitionColourToSampler(VulkanTexture* t, vk::CommandBuffer  buffer);
 		void TransitionDepthToSampler(VulkanTexture* t, vk::CommandBuffer  buffer, bool doStencil = false);
 
 		void TransitionSamplerToColour(VulkanTexture* t, vk::CommandBuffer  buffer);
 		void TransitionSamplerToDepth(VulkanTexture* t, vk::CommandBuffer  buffer, bool doStencil = false);
-
 
 		vk::CommandBuffer	BeginComputeCmdBuffer(const std::string& debugName = "");
 		vk::CommandBuffer	BeginCmdBuffer(const std::string& debugName = "");
@@ -80,8 +79,7 @@ namespace NCL::Rendering {
 		void				SubmitCmdBuffer(vk::CommandBuffer  buffer);
 		vk::Fence 			SubmitCmdBufferFence(vk::CommandBuffer  buffer);
 
-		VulkanBuffer CreateBuffer(size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties = vk::MemoryPropertyFlagBits::eDeviceLocal);
-		void		 DestroyBuffer(VulkanBuffer& uniform);
+		VulkanBuffer CreateBuffer(size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties = vk::MemoryPropertyFlagBits::eDeviceLocal, bool mappable = false);
 		void		 UploadBufferData(VulkanBuffer& uniform, void* data, int dataSize);
 
 		void		BeginDefaultRenderPass(vk::CommandBuffer  cmds);
@@ -91,6 +89,10 @@ namespace NCL::Rendering {
 
 		vk::Device GetDevice() const {
 			return device;
+		}
+
+		VmaAllocator GetMemoryAllocator() const {
+			return memoryAllocator;
 		}
 
 		bool	MemoryTypeFromPhysicalDeviceProps(vk::MemoryPropertyFlags requirements, uint32_t type, uint32_t& index);
@@ -134,6 +136,7 @@ namespace NCL::Rendering {
 		bool	InitPhysicalDevice();
 		bool	InitGPUDevice();
 		bool	InitSurface();
+		void	InitMemoryAllocator();
 		uint32_t	InitBufferChain(vk::CommandBuffer  cmdBuffer);
 
 		bool	InitDeviceQueueIndices();
@@ -165,6 +168,8 @@ namespace NCL::Rendering {
 		uint32_t			computeQueueIndex;
 		uint32_t			copyQueueIndex;
 		uint32_t			gfxPresentIndex;
+
+		VmaAllocator		memoryAllocator;
 
 		//Initialisation Info
 		std::vector<const char*> deviceExtensions;

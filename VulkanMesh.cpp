@@ -22,7 +22,7 @@ vk::Format attributeFormats[] = {
 	vk::Format::eR32G32B32A32Sfloat,//Skel Weights
 	vk::Format::eR32G32B32A32Sint,//Skel indices
 };
-
+//Attribute sizes for each of the above
 size_t attributeSizes[] = {
 	sizeof(Vector3),
 	sizeof(Vector4),
@@ -56,7 +56,7 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 	attributeBindings.clear();
 	attributeDescriptions.clear();
 
-	vector<const char*> attributeDataSources;
+	vector<const char*> attributeDataSources;//Pointer for each attribute in CPU memory
 
 	auto atrributeFunc = [&](VertexAttribute attribute, size_t count, const char* data) {
 		if (count > 0) {
@@ -74,81 +74,84 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 	atrributeFunc(VertexAttribute::JointWeights,	GetSkinWeightData().size()	, (const char*)GetSkinWeightData().data());
 	atrributeFunc(VertexAttribute::JointIndices,	GetSkinIndexData().size()	, (const char*)GetSkinIndexData().data());
 
-	size_t vertexDataSize = vSize * GetVertexCount();
+	for (uint32_t i = 0; i < usedAttributes.size(); ++i) {
+		//Which vertex attribute slot should Vulkan buffer index i map to?
+		int attributeType = usedAttributes[i]; 
+		//Describes the vertex attribute state
+		attributeBindings.emplace_back(i, (unsigned int)attributeSizes[attributeType], vk::VertexInputRate::eVertex);
+		//Describes the vertex attribute data type and offset
+		attributeDescriptions.emplace_back(attributeType, i, attributeFormats[attributeType], 0);		
+	}
 
-	vertexBuffer = renderer->CreateBuffer(vertexDataSize, 
-		vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, 
+	vertexInputState = vk::PipelineVertexInputStateCreateInfo({},
+		(uint32_t)attributeBindings.size(), &attributeBindings[0],
+		(uint32_t)attributeDescriptions.size(), &attributeDescriptions[0]
+	);
+
+	size_t vertexDataSize		= vSize * GetVertexCount();
+	size_t indexDataSize		= sizeof(int) * GetIndexCount();
+	size_t stagingBufferSize	= vertexDataSize + indexDataSize;
+
+	vertexBuffer = renderer->CreateBuffer(vertexDataSize,
+		vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
 		vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-	VulkanBuffer stagingBuffer = renderer->CreateBuffer(vertexDataSize,
-		vk::BufferUsageFlagBits::eTransferSrc, 
-		vk::MemoryPropertyFlagBits::eHostVisible);
+	VulkanBuffer stagingBuffer = renderer->CreateBuffer(stagingBufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible, true);
 
 	//need to now copy vertex data to device memory
-	char* dataPtr = (char*)sourceDevice.mapMemory(*stagingBuffer.deviceMem, 0, stagingBuffer.allocInfo.allocationSize);
+	char* dataPtr = (char*)sourceDevice.mapMemory(stagingBuffer.allocationInfo.deviceMemory, stagingBuffer.allocationInfo.offset, stagingBuffer.allocationInfo.size);
 	size_t offset = 0;
 	for (size_t i = 0; i < usedAttributes.size(); ++i) {
-		usedBuffers.push_back(*vertexBuffer.buffer);
+		//We're going to use the same buffer for every attribute
+		usedBuffers.push_back(vertexBuffer.buffer);
+		//But each attribute starts at a different offset
 		usedOffsets.push_back(offset);
+		//Copy the data from CPU to GPU-visible memory
 		size_t copySize = GetVertexCount() * attributeSizes[usedAttributes[i]];
 		memcpy(dataPtr + offset, attributeDataSources[i], copySize);
 		offset += copySize;
 	}
-	sourceDevice.unmapMemory(*stagingBuffer.deviceMem);
+	size_t indexDataOffset = offset;
+	if (GetIndexCount() > 0) {
+		memcpy(dataPtr + indexDataOffset, GetIndexData().data(), indexDataSize);
+	}
+	sourceDevice.unmapMemory(stagingBuffer.allocationInfo.deviceMemory);
 
+	vk::CommandBuffer cmdBuffer = renderer->BeginCmdBuffer();
 	{//Now to transfer the vertex data from the staging buffer to the vertex buffer
 		vk::BufferCopy copyRegion;
-		copyRegion.size = vertexDataSize;
-		vk::CommandBuffer cmdBuffer = renderer->BeginCmdBuffer();
-		cmdBuffer.copyBuffer(*stagingBuffer.buffer, *vertexBuffer.buffer, copyRegion);
-		renderer->SubmitCmdBufferWait(cmdBuffer);
+		copyRegion.size = vertexDataSize;	
+		cmdBuffer.copyBuffer(stagingBuffer.buffer, vertexBuffer.buffer, copyRegion);
 	}
-
-	for (uint32_t i = 0; i < usedAttributes.size(); ++i) {
-		int attributeType = usedAttributes[i]; //Shaders are locked to specific ids due to the binding locations, this converts to that locked ID
-
-		attributeDescriptions.emplace_back(attributeType, i, attributeFormats[attributeType], 0);
-		attributeBindings.emplace_back(i, (unsigned int)attributeSizes[attributeType], vk::VertexInputRate::eVertex);
-	}
-
-	vertexInputState = vk::PipelineVertexInputStateCreateInfo({},
-		(uint32_t)attributeBindings.size()		, & attributeBindings[0],	//How many buffers this mesh will be taking data from
-		(uint32_t)attributeDescriptions.size()	, & attributeDescriptions[0] //how many attributes + attribute info from above
-	);
 
 	if (GetIndexCount() > 0) {	//Make the index buffer if there are any!
-		size_t indexDataSize = sizeof(int) * GetIndexCount();
 		indexBuffer = renderer->CreateBuffer(indexDataSize,
-			vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst, 
+			vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-		VulkanBuffer stagingBuffer = renderer->CreateBuffer(indexDataSize,
-			vk::BufferUsageFlagBits::eTransferSrc, 
-			vk::MemoryPropertyFlagBits::eHostVisible);
-
-		char* dataPtr = (char*)sourceDevice.mapMemory(stagingBuffer.deviceMem.get(), 0, stagingBuffer.allocInfo.allocationSize);
-		memcpy(dataPtr, GetIndexData().data(), indexDataSize);
-		sourceDevice.unmapMemory(*stagingBuffer.deviceMem);
 
 		vk::BufferCopy copyRegion;
 		copyRegion.size = indexDataSize;
+		copyRegion.srcOffset = indexDataOffset;
 
-		vk::CommandBuffer cmdBuffer = renderer->BeginCmdBuffer();
-		cmdBuffer.copyBuffer(*stagingBuffer.buffer, *indexBuffer.buffer, copyRegion);
-		renderer->SubmitCmdBufferWait(cmdBuffer);
+		cmdBuffer.copyBuffer(stagingBuffer.buffer, indexBuffer.buffer, copyRegion);	
 	}
+	renderer->SubmitCmdBufferWait(cmdBuffer);
+
 	if (!debugName.empty()) {
-		Vulkan::SetDebugName(sourceDevice, vk::ObjectType::eBuffer, Vulkan::GetVulkanHandle(*vertexBuffer.buffer), debugName + " vertex attributes");
+		Vulkan::SetDebugName(sourceDevice, vk::ObjectType::eBuffer, Vulkan::GetVulkanHandle(vertexBuffer.buffer), debugName + " vertex attributes");
 		if (GetIndexCount() > 0) {
-			Vulkan::SetDebugName(sourceDevice, vk::ObjectType::eBuffer, Vulkan::GetVulkanHandle(*indexBuffer.buffer), debugName + " vertex indices");
+			Vulkan::SetDebugName(sourceDevice, vk::ObjectType::eBuffer, Vulkan::GetVulkanHandle(indexBuffer.buffer), debugName + " vertex indices");
 		}
 	}
+	//The staging buffer is auto destroyed, but that's fine!
+	//We made the GPU wait for the commands to complete, so 
+	//the staging buffer has been read from at this point
 }
 
 void VulkanMesh::BindToCommandBuffer(vk::CommandBuffer  buffer) const {
 	buffer.bindVertexBuffers(0, (unsigned int)usedBuffers.size(), &usedBuffers[0], &usedOffsets[0]);
 
 	if (GetIndexCount() > 0) {
-		buffer.bindIndexBuffer(*indexBuffer.buffer, 0, vk::IndexType::eUint32);
+		buffer.bindIndexBuffer(indexBuffer.buffer, 0, vk::IndexType::eUint32);
 	}
 }

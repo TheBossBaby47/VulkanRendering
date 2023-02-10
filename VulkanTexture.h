@@ -39,7 +39,7 @@ namespace NCL::Rendering {
 		}
 
 		vk::Image GetImage() const {
-			return *image;
+			return image;
 		}
 
 		~VulkanTexture();
@@ -49,22 +49,18 @@ namespace NCL::Rendering {
 		VulkanTexture();
 		void GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout endLayout, vk::PipelineStageFlags endFlags);
 
-		void	InitTextureDeviceMemory(VulkanTexture& img);
 		void	GenerateTextureInternal(uint32_t width, uint32_t height, uint32_t mipcount, bool isCube, const std::string& debugName, vk::Format format, vk::ImageAspectFlags aspect, vk::ImageUsageFlags usage, vk::ImageLayout outLayout, vk::PipelineStageFlags pipeType);
 		void	GenerateTextureFromDataInternal(uint32_t width, uint32_t height, uint32_t channelCount, bool isCube, std::vector<char*>dataSrcs, const std::string& debugName);
 
-		vk::UniqueImageView  GenerateDefaultView(vk::ImageAspectFlags type);
+		vk::UniqueImageView	defaultView;
+		vk::Image			image;
 
-		static int CalculateMipCount(uint32_t width, uint32_t height);
-
-		vk::UniqueImageView		defaultView;
-		vk::UniqueImage			image;
-
-		vk::DeviceMemory		deviceMem;
+		VmaAllocation		allocationHandle;
+		VmaAllocationInfo	allocationInfo;
+		VmaAllocator		allocator;
 
 		vk::Format				format;
 
-		vk::MemoryAllocateInfo	allocInfo;
 		vk::ImageCreateInfo		createInfo;
 		vk::ImageAspectFlags	aspectType;
 

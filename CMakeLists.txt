@@ -55,6 +55,7 @@ add_library(${PROJECT_NAME} STATIC ${ALL_FILES})
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE
     <vulkan/vulkan.hpp>
+	<vma/vk_mem_alloc.h>
     <memory>
     <unordered_set>
     <map>

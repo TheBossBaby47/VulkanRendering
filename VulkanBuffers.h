@@ -6,26 +6,52 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
+#include "vma/vk_mem_alloc.h"
 
 namespace NCL::Rendering {
+	//A buffer, backed by memory we have allocated elsewhere
 	struct VulkanBuffer {
-		vk::UniqueBuffer			buffer;
-		vk::MemoryAllocateInfo		allocInfo;
-		vk::UniqueDeviceMemory		deviceMem;
-		size_t						requestedSize;
+		vk::Buffer	buffer;
+
+		VmaAllocation		allocationHandle;
+		VmaAllocationInfo	allocationInfo;
+		VmaAllocator		allocator;
+
+		VulkanBuffer() {
+
+		}
+
+		VulkanBuffer(VulkanBuffer&& obj) {
+			buffer = obj.buffer;
+			allocationHandle = obj.allocationHandle;
+			allocationInfo = obj.allocationInfo;
+			allocator = obj.allocator;
+
+			obj.buffer = VK_NULL_HANDLE;
+		}
+
+		VulkanBuffer& operator=(VulkanBuffer&& obj) {
+			if (this != &obj) {
+				buffer = obj.buffer;
+				allocationHandle = obj.allocationHandle;
+				allocationInfo = obj.allocationInfo;
+				allocator = obj.allocator;
+
+				obj.buffer = VK_NULL_HANDLE;
+			}
+			return *this;
+		}
+
+		~VulkanBuffer() {
+			if (buffer) {
+				vmaDestroyBuffer(allocator, buffer, allocationHandle);
+			}
+		}
 	};
 
-	struct VulkanAccelerationStructure : public VulkanBuffer {
-		vk::AccelerationStructureKHR	structureInfo;
-
-		VulkanAccelerationStructure() {
-
-		}
-		VulkanAccelerationStructure(VulkanBuffer&& b)
-		{
-			this->buffer		= std::move(b.buffer);
-			this->allocInfo		= b.allocInfo;
-			this->deviceMem		= std::move(b.deviceMem);
-		}
+	template<typename T>
+	struct UniformBuffer : VulkanBuffer
+	{
+		T* mappedMemory;
 	};
 };

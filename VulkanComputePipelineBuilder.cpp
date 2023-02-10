@@ -66,6 +66,8 @@ VulkanPipeline	VulkanComputePipelineBuilder::Build(vk::Device device, vk::Pipeli
 
 	if (!debugName.empty()) {
 		Vulkan::SetDebugName(device, vk::ObjectType::ePipeline, Vulkan::GetVulkanHandle(*output.pipeline), debugName);
+
+		Vulkan::SetDebugName(device, vk::ObjectType::ePipeline, Vulkan::GetVulkanHandle(*output.pipeline), debugName);
 	}
 
 	return output;
