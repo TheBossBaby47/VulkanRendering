@@ -6,7 +6,6 @@ set(PROJECT_NAME VulkanRendering)
 set(Header_Files
     "VulkanUtils.h"
     "VulkanBuffers.h"
-    "VulkanBVHBuilder.h"
     "VulkanCompute.h"
     "VulkanComputePipelineBuilder.h"
     "VulkanDescriptorSetLayoutBuilder.h"
@@ -16,7 +15,6 @@ set(Header_Files
     "VulkanPipelineBuilder.h"
     "VulkanRenderer.h"
     "VulkanRenderPassBuilder.h"
-    "VulkanRTShader.h"
     "VulkanShader.h"
     "VulkanShaderBuilder.h"
     "VulkanTexture.h"
@@ -27,7 +25,6 @@ source_group("Header Files" FILES ${Header_Files})
 set(Source_Files
 	"VulkanUtils.cpp"
     "VulkanBuffers.cpp"
-    "VulkanBVHBuilder.cpp"
     "VulkanCompute.cpp"
     "VulkanComputePipelineBuilder.cpp"
     "VulkanDescriptorSetLayoutBuilder.cpp"
@@ -36,7 +33,6 @@ set(Source_Files
     "VulkanPipelineBuilder.cpp"
     "VulkanRenderer.cpp"
     "VulkanRenderPassBuilder.cpp"
-    "VulkanRTShader.cpp"
     "VulkanShader.cpp"
     "VulkanShaderBuilder.cpp"
     "VulkanTexture.cpp"
