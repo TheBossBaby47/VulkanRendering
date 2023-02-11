@@ -26,11 +26,11 @@ namespace NCL::Rendering {
 
 		void	ImageTransitionBarrier(vk::CommandBuffer  buffer, vk::Image i, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int mipLevel = 0, int layer = 0);
 
-		void TransitionColourToSampler(vk::CommandBuffer  buffer, VulkanTexture* t);
-		void TransitionDepthToSampler(vk::CommandBuffer  buffer, VulkanTexture* t, bool doStencil = false);
+		void TransitionColourToSampler(vk::CommandBuffer  buffer, vk::Image t);
+		void TransitionDepthToSampler(vk::CommandBuffer  buffer, vk::Image t, bool doStencil = false);
 
-		void TransitionSamplerToColour(vk::CommandBuffer  buffer, VulkanTexture* t);
-		void TransitionSamplerToDepth(vk::CommandBuffer  buffer, VulkanTexture* t, bool doStencil = false);
+		void TransitionSamplerToColour(vk::CommandBuffer  buffer, vk::Image t);
+		void TransitionSamplerToDepth(vk::CommandBuffer  buffer, vk::Image t, bool doStencil = false);
 
 		void DispatchCompute(vk::CommandBuffer  to, unsigned int xCount, unsigned int yCount = 0, unsigned int zCount = 0);
 

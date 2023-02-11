@@ -70,30 +70,30 @@ void	Vulkan::ImageTransitionBarrier(vk::CommandBuffer  cmdBuffer, vk::Image imag
 	cmdBuffer.pipelineBarrier(srcStage, dstStage, vk::DependencyFlags(), 0, nullptr, 0, nullptr, 1, &memoryBarrier);
 }
 
-void Vulkan::TransitionColourToSampler(vk::CommandBuffer  buffer, VulkanTexture* t) {
-	ImageTransitionBarrier(buffer, t->GetImage(),
+void Vulkan::TransitionColourToSampler(vk::CommandBuffer  buffer, vk::Image t) {
+	ImageTransitionBarrier(buffer, t,
 		vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor,
 		vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eFragmentShader);
 }
 
-void Vulkan::TransitionDepthToSampler(vk::CommandBuffer  buffer, VulkanTexture* t, bool doStencil) {
-	vk::ImageAspectFlags flags = doStencil ? vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil : vk::ImageAspectFlagBits::eDepth;
-
-	ImageTransitionBarrier(buffer, t->GetImage(),
-		vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageLayout::eDepthStencilReadOnlyOptimal, flags,
-		vk::PipelineStageFlagBits::eEarlyFragmentTests, vk::PipelineStageFlagBits::eFragmentShader);
-}
-
-void Vulkan::TransitionSamplerToColour(vk::CommandBuffer  buffer, VulkanTexture* t) {
-	ImageTransitionBarrier(buffer, t->GetImage(),
+void Vulkan::TransitionSamplerToColour(vk::CommandBuffer  buffer, vk::Image t) {
+	ImageTransitionBarrier(buffer, t,
 		vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageAspectFlagBits::eColor,
 		vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eColorAttachmentOutput);
 }
 
-void Vulkan::TransitionSamplerToDepth(vk::CommandBuffer  buffer, VulkanTexture* t, bool doStencil) {
+void Vulkan::TransitionDepthToSampler(vk::CommandBuffer  buffer, vk::Image t, bool doStencil) {
 	vk::ImageAspectFlags flags = doStencil ? vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil : vk::ImageAspectFlagBits::eDepth;
 
-	ImageTransitionBarrier(buffer, t->GetImage(),
+	ImageTransitionBarrier(buffer, t,
+		vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageLayout::eDepthStencilReadOnlyOptimal, flags,
+		vk::PipelineStageFlagBits::eEarlyFragmentTests, vk::PipelineStageFlagBits::eFragmentShader);
+}
+
+void Vulkan::TransitionSamplerToDepth(vk::CommandBuffer  buffer, vk::Image t, bool doStencil) {
+	vk::ImageAspectFlags flags = doStencil ? vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil : vk::ImageAspectFlagBits::eDepth;
+
+	ImageTransitionBarrier(buffer, t,
 		vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageLayout::eDepthStencilAttachmentOptimal, flags,
 		vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eEarlyFragmentTests);
 }

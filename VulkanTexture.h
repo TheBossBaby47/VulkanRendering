@@ -40,6 +40,17 @@ namespace NCL::Rendering {
 			return image;
 		}
 
+		//Allows us to pass a texture as vk type to various functions
+		operator vk::Image() const {
+			return image;
+		}
+		operator vk::ImageView() const {
+			return *defaultView;
+		}		
+		operator vk::Format() const {
+			return format;
+		}
+
 	protected:
 		VulkanTexture();
 		void GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout endLayout, vk::PipelineStageFlags endFlags);

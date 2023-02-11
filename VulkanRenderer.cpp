@@ -833,20 +833,3 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 void	VulkanRenderer::EndRendering(vk::CommandBuffer  cmds) {
 	cmds.endRendering(*NCL::Rendering::Vulkan::dispatcher);
 }
-//
-//bool VulkanRenderer::EnableRayTracing() {
-//	vk::PhysicalDeviceRayTracingPipelinePropertiesKHR	pipeProperties;
-//	vk::PhysicalDeviceAccelerationStructureFeaturesKHR	accelFeatures;
-//
-//	vk::PhysicalDeviceProperties2 props;
-//	props.pNext = &pipeProperties;
-//
-//	gpu.getProperties2(&props, *Vulkan::dispatcher);
-//	//gpu.getFeatures2KHR(accelFeatures);
-//
-//	auto properties =
-//		gpu.getProperties2<vk::PhysicalDeviceProperties2,
-//		vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
-//
-//	return true;
-//}

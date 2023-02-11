@@ -75,13 +75,8 @@ namespace NCL::Rendering {
 			return memoryAllocator;
 		}
 
-		//bool EnableRayTracing();
-
 		void TransitionSwapchainForRendering(vk::CommandBuffer buffer);
 		void TransitionSwapchainForPresenting(vk::CommandBuffer buffer);
-
-		//const vk::PhysicalDeviceRayTracingPipelinePropertiesKHR&  GetRayTracingPipelineProperties() const { return rayPipelineProperties; }
-		//const vk::PhysicalDeviceAccelerationStructureFeaturesKHR& GetRayTracingAccelerationStructureProperties() const { return rayAccelFeatures; }
 
 	protected:		
 		struct SwapChain {
@@ -161,11 +156,5 @@ namespace NCL::Rendering {
 
 		int majorVersion = 1;
 		int minorVersion = 1;
-
-		///*
-		//* RayTracing Stuff!
-		//*/
-		//vk::PhysicalDeviceRayTracingPipelinePropertiesKHR	rayPipelineProperties;
-		//vk::PhysicalDeviceAccelerationStructureFeaturesKHR	rayAccelFeatures;
 	};
 }
