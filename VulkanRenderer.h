@@ -20,26 +20,13 @@ namespace NCL::Rendering {
 	class VulkanCompute;
 	class VulkanTexture;
 	struct VulkanBuffer;
-	struct VulkanMemory;
-	struct VulkanAllocation;
-	struct BufferedData;
-
 
 	class VulkanRenderer : public RendererBase {
 		friend class VulkanMesh;
 		friend class VulkanTexture;
-		friend class VulkanPipelineBuilder;
-		friend class VulkanShaderBuilder;
-		friend class VulkanDescriptorSetLayoutBuilder;
-		friend class VulkanRenderPassBuilder;
-		friend class VulkanBVHBuilder;
 	public:
 		VulkanRenderer(Window& window);
 		~VulkanRenderer();
-
-		vk::ClearColorValue ClearColour(float r, float g, float b, float a = 1.0f) {
-			return vk::ClearColorValue(std::array<float, 4>{r, g, b, a});
-		}
 
 		virtual bool Init();
 		virtual bool HasInitialised() const { return device; }
@@ -57,20 +44,10 @@ namespace NCL::Rendering {
 		void SubmitDrawCall(const VulkanMesh& m, vk::CommandBuffer  to, int instanceCount = 1);
 		void SubmitDrawCallLayer(const VulkanMesh& m, unsigned int layer, vk::CommandBuffer  to, int instanceCount = 1);
 
-		void DispatchCompute(vk::CommandBuffer  to, unsigned int xCount, unsigned int yCount = 0, unsigned int zCount = 0);
-
 		vk::UniqueDescriptorSet BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool = {}, uint32_t variableDescriptorCount = 0);
 
 		void	UpdateBufferDescriptor(vk::DescriptorSet set, const VulkanBuffer& data, int bindingSlot, vk::DescriptorType bufferType);
 		void	UpdateImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
-
-		void	ImageTransitionBarrier(vk::CommandBuffer  buffer, vk::Image i, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int mipLevel = 0, int layer = 0 );
-
-		void TransitionColourToSampler(VulkanTexture* t, vk::CommandBuffer  buffer);
-		void TransitionDepthToSampler(VulkanTexture* t, vk::CommandBuffer  buffer, bool doStencil = false);
-
-		void TransitionSamplerToColour(VulkanTexture* t, vk::CommandBuffer  buffer);
-		void TransitionSamplerToDepth(VulkanTexture* t, vk::CommandBuffer  buffer, bool doStencil = false);
 
 		vk::CommandBuffer	BeginComputeCmdBuffer(const std::string& debugName = "");
 		vk::CommandBuffer	BeginCmdBuffer(const std::string& debugName = "");
@@ -79,7 +56,10 @@ namespace NCL::Rendering {
 		void				SubmitCmdBuffer(vk::CommandBuffer  buffer);
 		vk::Fence 			SubmitCmdBufferFence(vk::CommandBuffer  buffer);
 
-		VulkanBuffer CreateBuffer(size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties = vk::MemoryPropertyFlagBits::eDeviceLocal, bool mappable = false);
+		VulkanBuffer	CreateStagingBuffer(size_t size);
+		VulkanBuffer	CreatePersistentBuffer(size_t, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags extraProperties = (vk::MemoryPropertyFlags)0);
+
+		VulkanBuffer CreateBuffer(size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties = vk::MemoryPropertyFlagBits::eDeviceLocal);
 		void		 UploadBufferData(VulkanBuffer& uniform, void* data, int dataSize);
 
 		void		BeginDefaultRenderPass(vk::CommandBuffer  cmds);
@@ -95,15 +75,13 @@ namespace NCL::Rendering {
 			return memoryAllocator;
 		}
 
-		bool	MemoryTypeFromPhysicalDeviceProps(vk::MemoryPropertyFlags requirements, uint32_t type, uint32_t& index);
-
-		bool EnableRayTracing();
+		//bool EnableRayTracing();
 
 		void TransitionSwapchainForRendering(vk::CommandBuffer buffer);
 		void TransitionSwapchainForPresenting(vk::CommandBuffer buffer);
 
-		const vk::PhysicalDeviceRayTracingPipelinePropertiesKHR&  GetRayTracingPipelineProperties() const { return rayPipelineProperties; }
-		const vk::PhysicalDeviceAccelerationStructureFeaturesKHR& GetRayTracingAccelerationStructureProperties() const { return rayAccelFeatures; }
+		//const vk::PhysicalDeviceRayTracingPipelinePropertiesKHR&  GetRayTracingPipelineProperties() const { return rayPipelineProperties; }
+		//const vk::PhysicalDeviceAccelerationStructureFeaturesKHR& GetRayTracingAccelerationStructureProperties() const { return rayAccelFeatures; }
 
 	protected:		
 		struct SwapChain {
@@ -144,6 +122,8 @@ namespace NCL::Rendering {
 
 		virtual void SetupDeviceInfo(vk::DeviceCreateInfo& info) {}
 
+		VulkanBuffer CreateBufferInternal(vk::BufferCreateInfo& vkInfo, VmaAllocationCreateInfo& vmaInfo);
+
 		vk::SurfaceKHR		surface;
 		vk::Format			surfaceFormat;
 		vk::ColorSpaceKHR	surfaceSpace;
@@ -182,10 +162,10 @@ namespace NCL::Rendering {
 		int majorVersion = 1;
 		int minorVersion = 1;
 
-		/*
-		* RayTracing Stuff!
-		*/
-		vk::PhysicalDeviceRayTracingPipelinePropertiesKHR	rayPipelineProperties;
-		vk::PhysicalDeviceAccelerationStructureFeaturesKHR	rayAccelFeatures;
+		///*
+		//* RayTracing Stuff!
+		//*/
+		//vk::PhysicalDeviceRayTracingPipelinePropertiesKHR	rayPipelineProperties;
+		//vk::PhysicalDeviceAccelerationStructureFeaturesKHR	rayAccelFeatures;
 	};
 }

@@ -12,13 +12,14 @@ namespace NCL::Rendering {
 	//A buffer, backed by memory we have allocated elsewhere
 	struct VulkanBuffer {
 		vk::Buffer	buffer;
+		size_t		size;
 
 		VmaAllocation		allocationHandle;
 		VmaAllocationInfo	allocationInfo;
 		VmaAllocator		allocator;
 
 		VulkanBuffer() {
-
+			size = 0;
 		}
 
 		VulkanBuffer(VulkanBuffer&& obj) {
@@ -26,6 +27,7 @@ namespace NCL::Rendering {
 			allocationHandle = obj.allocationHandle;
 			allocationInfo = obj.allocationInfo;
 			allocator = obj.allocator;
+			size = obj.size;
 
 			obj.buffer = VK_NULL_HANDLE;
 		}
@@ -36,7 +38,7 @@ namespace NCL::Rendering {
 				allocationHandle = obj.allocationHandle;
 				allocationInfo = obj.allocationInfo;
 				allocator = obj.allocator;
-
+				size = obj.size;
 				obj.buffer = VK_NULL_HANDLE;
 			}
 			return *this;

@@ -47,7 +47,5 @@ namespace NCL::Rendering {
 		vector<vk::Buffer>			usedBuffers;
 		vector<vk::DeviceSize>		usedOffsets;
 		vector< VertexAttribute >	usedAttributes;
-
-		vk::Device			sourceDevice;
 	};
 }

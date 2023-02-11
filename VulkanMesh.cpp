@@ -20,7 +20,7 @@ vk::Format attributeFormats[] = {
 	vk::Format::eR32G32B32Sfloat,	//Normals
 	vk::Format::eR32G32B32A32Sfloat,//Tangents are 4D!
 	vk::Format::eR32G32B32A32Sfloat,//Skel Weights
-	vk::Format::eR32G32B32A32Sint,//Skel indices
+	vk::Format::eR32G32B32A32Sint,	//Skel indices
 };
 //Attribute sizes for each of the above
 size_t attributeSizes[] = {
@@ -37,6 +37,7 @@ VulkanMesh::VulkanMesh()	{
 }
 
 VulkanMesh::VulkanMesh(const std::string& filename) : MeshGeometry(filename) {
+	debugName = filename;
 }
 
 VulkanMesh::~VulkanMesh()	{
@@ -48,7 +49,7 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 	}
 	VulkanRenderer* renderer = (VulkanRenderer*)r;
 
-	sourceDevice = renderer->GetDevice();
+	vk::Device sourceDevice = renderer->GetDevice();
 
 	int vSize		= 0; //how much data each vertex takes up
 
@@ -96,7 +97,7 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 		vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
 		vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-	VulkanBuffer stagingBuffer = renderer->CreateBuffer(stagingBufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible, true);
+	VulkanBuffer stagingBuffer = renderer->CreateStagingBuffer(stagingBufferSize);
 
 	//need to now copy vertex data to device memory
 	char* dataPtr = (char*)sourceDevice.mapMemory(stagingBuffer.allocationInfo.deviceMemory, stagingBuffer.allocationInfo.offset, stagingBuffer.allocationInfo.size);

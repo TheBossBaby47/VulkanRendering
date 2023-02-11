@@ -96,9 +96,6 @@ bool VulkanRenderer::Init() {
 	InitCommandPools();
 	InitDefaultDescriptorPool();
 
-	VulkanTexture::SetRenderer(this);
-	TextureLoader::RegisterAPILoadFunction(VulkanTexture::TextureFromFilenameLoader);
-
 	hostWindow.SetRenderer(this);
 	OnWindowResize((int)hostWindow.GetScreenSize().x, (int)hostWindow.GetScreenSize().y);
 
@@ -294,7 +291,7 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 
 		chain->image = i;
 
-		ImageTransitionBarrier(cmdBuffer, i, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput);
+		Vulkan::ImageTransitionBarrier(cmdBuffer, i, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
 		chain->view = device.createImageView(viewCreate);
 
@@ -323,62 +320,6 @@ void	VulkanRenderer::InitMemoryAllocator() {
 	allocatorInfo.device = device;
 	allocatorInfo.instance = instance;
 	vmaCreateAllocator(&allocatorInfo, &memoryAllocator);
-}
-
-void	VulkanRenderer::ImageTransitionBarrier(vk::CommandBuffer  cmdBuffer, vk::Image image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int mipLevel, int layer) {
-	vk::ImageSubresourceRange subRange = vk::ImageSubresourceRange(aspect, mipLevel, 1, layer, 1);
-
-	vk::ImageMemoryBarrier memoryBarrier = vk::ImageMemoryBarrier()
-		.setSubresourceRange(subRange)
-		.setImage(image)
-		.setOldLayout(oldLayout)
-		.setNewLayout(newLayout);
-
-	if (newLayout == vk::ImageLayout::eTransferDstOptimal) {
-		memoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-	}
-	else if (newLayout == vk::ImageLayout::eTransferSrcOptimal) {
-		memoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
-	}
-	else if (newLayout == vk::ImageLayout::eColorAttachmentOptimal) {
-		memoryBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-	}
-	else if (newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
-		memoryBarrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-	}
-	else if (newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-		memoryBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eInputAttachmentRead; //added last bit?!?
-	}
-
-	cmdBuffer.pipelineBarrier(srcStage, dstStage, vk::DependencyFlags(), 0, nullptr, 0, nullptr, 1, &memoryBarrier);
-}
-
-void VulkanRenderer::TransitionColourToSampler(VulkanTexture* t, vk::CommandBuffer  buffer) {
-	ImageTransitionBarrier(buffer, t->GetImage(),
-		vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor,
-		vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eFragmentShader);
-}
-
-void VulkanRenderer::TransitionDepthToSampler(VulkanTexture* t, vk::CommandBuffer  buffer, bool doStencil) {
-	vk::ImageAspectFlags flags = doStencil ? vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil : vk::ImageAspectFlagBits::eDepth;
-
-	ImageTransitionBarrier(buffer, t->GetImage(),
-		vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageLayout::eDepthStencilReadOnlyOptimal, flags,
-		vk::PipelineStageFlagBits::eEarlyFragmentTests, vk::PipelineStageFlagBits::eFragmentShader);
-}
-
-void VulkanRenderer::TransitionSamplerToColour(VulkanTexture* t, vk::CommandBuffer  buffer) {
-	ImageTransitionBarrier(buffer, t->GetImage(),
-		vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageAspectFlagBits::eColor,
-		vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eColorAttachmentOutput);
-}
-
-void VulkanRenderer::TransitionSamplerToDepth(VulkanTexture* t, vk::CommandBuffer  buffer, bool doStencil) {
-	vk::ImageAspectFlags flags = doStencil ? vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil : vk::ImageAspectFlagBits::eDepth;
-
-	ImageTransitionBarrier(buffer, t->GetImage(),
-		vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageLayout::eDepthStencilAttachmentOptimal, flags,
-		vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eEarlyFragmentTests);
 }
 
 vk::CommandBuffer VulkanRenderer::BeginComputeCmdBuffer(const std::string& debugName) {
@@ -539,7 +480,7 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 	vkDeviceWaitIdle(device);
 
 	//delete depthBuffer;
-	depthBuffer = VulkanTexture::CreateDepthTexture((int)hostWindow.GetScreenSize().x, (int)hostWindow.GetScreenSize().y);
+	depthBuffer = VulkanTexture::CreateDepthTexture(this,(int)hostWindow.GetScreenSize().x, (int)hostWindow.GetScreenSize().y);
 	
 	numFrameBuffers = InitBufferChain(cmds);
 
@@ -694,19 +635,6 @@ bool VulkanRenderer::CreateDefaultFrameBuffers() {
 	return true;
 }
 
-bool	VulkanRenderer::MemoryTypeFromPhysicalDeviceProps(vk::MemoryPropertyFlags requirements, uint32_t type, uint32_t& index) {
-	for (uint32_t i = 0; i < 32; ++i) {
-		if ((type & 1) == 1) {	//We care about this requirement
-			if ((deviceMemoryProperties.memoryTypes[i].propertyFlags & requirements) == requirements) {
-				index = i;
-				return true;
-			}
-		}
-		type >>= 1; //Check next bit
-	}
-	return false;
-}
-
 void	VulkanRenderer::InitDefaultDescriptorPool() {
 	int maxSets = 128; //how many times can we ask the pool for a descriptor set?
 	vk::DescriptorPoolSize poolSizes[] = {
@@ -744,8 +672,8 @@ void	VulkanRenderer::UpdateImageDescriptor(vk::DescriptorSet set, int bindingNum
 void VulkanRenderer::UpdateBufferDescriptor(vk::DescriptorSet set, const VulkanBuffer& data, int bindingSlot, vk::DescriptorType bufferType) {
 	auto descriptorInfo = vk::DescriptorBufferInfo()
 		.setBuffer(data.buffer)
-		.setOffset(data.allocationInfo.offset)
-		.setRange(data.allocationInfo.size);
+		.setOffset(0)
+		.setRange(data.size);
 
 	auto descriptorWrites = vk::WriteDescriptorSet()
 		.setDescriptorType(bufferType)
@@ -757,26 +685,49 @@ void VulkanRenderer::UpdateBufferDescriptor(vk::DescriptorSet set, const VulkanB
 	device.updateDescriptorSets(1, &descriptorWrites, 0, nullptr);
 }
 
-VulkanBuffer VulkanRenderer::CreateBuffer(size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, bool mappable) {
+VulkanBuffer VulkanRenderer::CreateBufferInternal(vk::BufferCreateInfo& vkInfo, VmaAllocationCreateInfo& vmaInfo) {
 	VulkanBuffer buffer;
+	buffer.size			= vkInfo.size;
+	buffer.allocator	= memoryAllocator;
+
+	vmaCreateBuffer(memoryAllocator, (VkBufferCreateInfo*)&vkInfo, &vmaInfo, (VkBuffer*)&(buffer.buffer), &buffer.allocationHandle, &buffer.allocationInfo);
+
+	return buffer;
+}
+
+VulkanBuffer	VulkanRenderer::CreateStagingBuffer(size_t size) {
+	vk::BufferUsageFlags	usage		= vk::BufferUsageFlagBits::eTransferSrc;
+	vk::MemoryPropertyFlags properties	= vk::MemoryPropertyFlagBits::eHostVisible;
 
 	vk::BufferCreateInfo bufferInfo(vk::BufferCreateFlags(), size, usage);
-
-	VmaAllocationCreateInfo vmaallocInfo = {};
-	if (mappable) {
-		vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-	}
+	VmaAllocationCreateInfo vmaallocInfo = {};	
+	vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 	vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 	vmaallocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
 
-	VkBuffer allocatedBuffer;
+	return CreateBufferInternal(bufferInfo, vmaallocInfo);
+}
 
-	vmaCreateBuffer(memoryAllocator, (VkBufferCreateInfo*) &bufferInfo, &vmaallocInfo, &allocatedBuffer, &buffer.allocationHandle, &buffer.allocationInfo);
+VulkanBuffer	VulkanRenderer::CreatePersistentBuffer(size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags extraProperties) {
+	vk::MemoryPropertyFlags properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent | extraProperties;
 
-	buffer.buffer = allocatedBuffer;
-	buffer.allocator = memoryAllocator;
+	vk::BufferCreateInfo bufferInfo(vk::BufferCreateFlags(), size, usage);
+	VmaAllocationCreateInfo vmaallocInfo = {};
+	vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;// | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+	vmaallocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
 
-	return buffer;
+	return CreateBufferInternal(bufferInfo, vmaallocInfo);
+}
+
+VulkanBuffer VulkanRenderer::CreateBuffer(size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties) {
+	vk::BufferCreateInfo bufferInfo(vk::BufferCreateFlags(), size, usage);
+
+	VmaAllocationCreateInfo vmaallocInfo = {};
+	vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+	vmaallocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
+
+	return CreateBufferInternal(bufferInfo, vmaallocInfo);
 }
 
 void VulkanRenderer::UploadBufferData(VulkanBuffer& uniform, void* data, int dataSize) {
@@ -833,10 +784,6 @@ void VulkanRenderer::SubmitDrawCall(const VulkanMesh& m, vk::CommandBuffer  to, 
 	}
 }
 
-void VulkanRenderer::DispatchCompute(vk::CommandBuffer  to, unsigned int xCount, unsigned int yCount, unsigned int zCount) {
-	to.dispatch(xCount, yCount, zCount);
-}
-
 void	VulkanRenderer::BeginDefaultRenderPass(vk::CommandBuffer  cmds) {
 	cmds.beginRenderPass(defaultBeginInfo, vk::SubpassContents::eInline);
 	cmds.setViewport(0, 1, &defaultViewport);
@@ -844,14 +791,14 @@ void	VulkanRenderer::BeginDefaultRenderPass(vk::CommandBuffer  cmds) {
 }
 
 void VulkanRenderer::TransitionSwapchainForRendering(vk::CommandBuffer buffer) {
-	ImageTransitionBarrier(buffer, swapChainList[currentSwap]->image,
+	Vulkan::ImageTransitionBarrier(buffer, swapChainList[currentSwap]->image,
 		vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal,
 		vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eColorAttachmentOutput,
 		vk::PipelineStageFlagBits::eColorAttachmentOutput);
 }
 
 void VulkanRenderer::TransitionSwapchainForPresenting(vk::CommandBuffer buffer) {
-	ImageTransitionBarrier(buffer, swapChainList[currentSwap]->image,
+	Vulkan::ImageTransitionBarrier(buffer, swapChainList[currentSwap]->image,
 		vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
 		vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eAllCommands,
 		vk::PipelineStageFlagBits::eBottomOfPipe);
@@ -865,7 +812,7 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 	colourAttachment.setImageView(swapChainList[currentSwap]->view)
 		.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
 		.setLoadOp(vk::AttachmentLoadOp::eClear)
-		.setClearValue(ClearColour(0.2f, 0.2f, 0.2f, 1.0f));
+		.setClearValue(Vulkan::ClearColour(0.2f, 0.2f, 0.2f, 1.0f));
 
 	vk::RenderingAttachmentInfoKHR depthAttachment;
 	depthAttachment.setImageView(depthBuffer->GetDefaultView())
@@ -886,20 +833,20 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 void	VulkanRenderer::EndRendering(vk::CommandBuffer  cmds) {
 	cmds.endRendering(*NCL::Rendering::Vulkan::dispatcher);
 }
-
-bool VulkanRenderer::EnableRayTracing() {
-	vk::PhysicalDeviceRayTracingPipelinePropertiesKHR	pipeProperties;
-	vk::PhysicalDeviceAccelerationStructureFeaturesKHR	accelFeatures;
-
-	vk::PhysicalDeviceProperties2 props;
-	props.pNext = &pipeProperties;
-
-	gpu.getProperties2(&props, *Vulkan::dispatcher);
-	//gpu.getFeatures2KHR(accelFeatures);
-
-	auto properties =
-		gpu.getProperties2<vk::PhysicalDeviceProperties2,
-		vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
-
-	return true;
-}
+//
+//bool VulkanRenderer::EnableRayTracing() {
+//	vk::PhysicalDeviceRayTracingPipelinePropertiesKHR	pipeProperties;
+//	vk::PhysicalDeviceAccelerationStructureFeaturesKHR	accelFeatures;
+//
+//	vk::PhysicalDeviceProperties2 props;
+//	props.pNext = &pipeProperties;
+//
+//	gpu.getProperties2(&props, *Vulkan::dispatcher);
+//	//gpu.getFeatures2KHR(accelFeatures);
+//
+//	auto properties =
+//		gpu.getProperties2<vk::PhysicalDeviceProperties2,
+//		vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
+//
+//	return true;
+//}

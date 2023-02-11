@@ -14,7 +14,9 @@ License: MIT (see LICENSE file at the top of the source tree)
 using namespace NCL;
 using namespace Rendering;
 
-VulkanRenderer* VulkanTexture::vkRenderer = nullptr;
+int MipCount(uint32_t width, uint32_t height) {
+	return (int)floor(log2(float(std::min(width, height)))) + 1;
+}
 
 VulkanTexture::VulkanTexture() {
 	width		= 0;
@@ -24,80 +26,39 @@ VulkanTexture::VulkanTexture() {
 	format		= vk::Format::eUndefined;
 }
 
-VulkanTexture::VulkanTexture(const std::string& name) : VulkanTexture() {
-	char* texData = nullptr;
-	int width = 0;
-	int height = 0;
-	int channels = 0;
-	int flags = 0;
-	TextureLoader::LoadTexture(name, texData, width, height, channels, flags);
-
-	if (width == 0 || height == 0) {
-		std::cout << __FUNCTION__ << " can't load texture " << name << "\n";
-	}
-	GenerateTextureFromDataInternal(width, height, channels, false, { texData }, name);
-	delete texData;
-}
-
 VulkanTexture::~VulkanTexture() {
 	if (image) {
 		vmaDestroyImage(allocator, image, allocationHandle);
 	}
 }
 
-void VulkanTexture::GenerateTextureFromDataInternal(uint32_t width, uint32_t height, uint32_t channelCount, bool isCube, std::vector<char*>dataSrcs, const std::string& debugName) {
-	 vk::Format				format = vk::Format::eR8G8B8A8Unorm;
-	 vk::ImageAspectFlags	aspect = vk::ImageAspectFlagBits::eColor;
-	 vk::ImageLayout		layout = vk::ImageLayout::eShaderReadOnlyOptimal;
-	 vk::ImageUsageFlags	usage  = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc;
+UniqueVulkanTexture VulkanTexture::CreateColourTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName, bool isFloat, bool useMips) {
+	vk::Format			 format = isFloat ? vk::Format::eR32G32B32A32Sfloat : vk::Format::eB8G8R8A8Unorm;
+	vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
+	vk::ImageLayout		 layout = vk::ImageLayout::eColorAttachmentOptimal;
+	vk::ImageUsageFlags  usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
 
-	 int mipCount = (int)floor(log2(float(std::min(width, height)))) + 1;
+	int numMips = useMips ? MipCount(width, height) : 1;
 
-	 GenerateTextureInternal(width, height, mipCount, isCube, debugName, format, aspect, usage, layout, vk::PipelineStageFlagBits::eFragmentShader);
-
-	 //tex is currently empty, need to fill it with our data from stbimage!
-	 int faceSize = width * height * channelCount;
-	 int allocationSize = faceSize * (int)dataSrcs.size();
-
-	 VulkanBuffer stagingBuffer = vkRenderer->CreateBuffer(allocationSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, true);
-
-	vk::Device device = vkRenderer->GetDevice();
-	vk::CommandBuffer cmdBuffer = vkRenderer->BeginCmdBuffer();
-
-	//our buffer now has memory! Copy some texture date to it...
-	char* gpuPtr = (char*)device.mapMemory(stagingBuffer.allocationInfo.deviceMemory, 0, allocationSize);
-	for (int i = 0; i < dataSrcs.size(); ++i) {
-		memcpy(gpuPtr, dataSrcs[i], faceSize);
-		gpuPtr += faceSize;
-		//We'll also set up each layer of the image to accept new transfers
-		vkRenderer->ImageTransitionBarrier(cmdBuffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectType, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, 0, i);
-	}
-	device.unmapMemory(stagingBuffer.allocationInfo.deviceMemory);
-
-	vk::BufferImageCopy copyInfo;
-	copyInfo.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor).setMipLevel(0).setLayerCount((uint32_t)dataSrcs.size());
-	copyInfo.imageExtent = vk::Extent3D(width, height, 1);
-
-	//Copy from staging buffer to image memory...
-	cmdBuffer.copyBufferToImage(stagingBuffer.buffer, image, vk::ImageLayout::eTransferDstOptimal, copyInfo);
-
-	if (mipCount > 1) {
-		GenerateMipMaps(cmdBuffer, vk::ImageLayout::eShaderReadOnlyOptimal, vk::PipelineStageFlagBits::eFragmentShader);
-	}
-	else { 
-		vkRenderer->ImageTransitionBarrier(cmdBuffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, aspectType, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader);
-		 
-	}
-	vkRenderer->SubmitCmdBufferWait(cmdBuffer);
-	//Staging buffer will fall out of scope and be auto destroyed
+	VulkanTexture* t = new VulkanTexture();
+	t->GenerateTextureInternal(renderer, width, height, numMips, false, debugName, format, aspect, usage, layout, vk::PipelineStageFlagBits::eColorAttachmentOutput);
+	return UniqueVulkanTexture(t);
 }
- //Compatability func
- TextureBase* VulkanTexture::TextureFromFilenameLoader(const std::string& name) {
-	 UniqueVulkanTexture tex = TextureFromFile(name);
-	 return tex.release();
- }
 
- UniqueVulkanTexture VulkanTexture::TextureFromFile(const std::string& name) {
+UniqueVulkanTexture VulkanTexture::CreateDepthTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName, bool hasStencil, bool useMips) {
+	vk::Format			 format = hasStencil ? vk::Format::eD24UnormS8Uint : vk::Format::eD32Sfloat;
+	vk::ImageAspectFlags aspect = hasStencil ? vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil : vk::ImageAspectFlagBits::eDepth;
+	vk::ImageLayout		 layout = hasStencil ? vk::ImageLayout::eDepthStencilAttachmentOptimal : vk::ImageLayout::eDepthAttachmentOptimal;
+	vk::ImageUsageFlags  usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
+
+	int numMips = useMips ? MipCount(width, height) : 1;
+
+	VulkanTexture* t = new VulkanTexture();
+	t->GenerateTextureInternal(renderer, width, height, numMips, false, debugName, format, aspect, usage, layout, vk::PipelineStageFlagBits::eEarlyFragmentTests);
+	return UniqueVulkanTexture(t);
+}
+
+ UniqueVulkanTexture VulkanTexture::TextureFromFile(VulkanRenderer* renderer, const std::string& name) {
 	char* texData	= nullptr;
 	int width		= 0;
 	int height		= 0;
@@ -110,12 +71,13 @@ void VulkanTexture::GenerateTextureFromDataInternal(uint32_t width, uint32_t hei
 		return nullptr;
 	}
 	VulkanTexture* texture = new VulkanTexture();
-	texture->GenerateTextureFromDataInternal(width, height, channels, false, { texData }, name);
+	texture->GenerateTextureFromDataInternal(renderer, width, height, channels, false, { texData }, name);
 	delete texData;
 	return UniqueVulkanTexture(texture);
 };
 
-UniqueVulkanTexture VulkanTexture::VulkanCubemapFromFiles(
+UniqueVulkanTexture VulkanTexture::CubemapFromFiles(
+	VulkanRenderer* renderer,
 	const std::string& negativeXFile, const std::string& positiveXFile,
 	const std::string& negativeYFile, const std::string& positiveYFile,
 	const std::string& negativeZFile, const std::string& positiveZFile,
@@ -150,7 +112,7 @@ UniqueVulkanTexture VulkanTexture::VulkanCubemapFromFiles(
 		return nullptr;
 	}
 	VulkanTexture* cubeTex = new VulkanTexture();
-	cubeTex->GenerateTextureFromDataInternal(width[0], height[0], channels[0], true, texData, debugName);
+	cubeTex->GenerateTextureFromDataInternal(renderer, width[0], height[0], channels[0], true, texData, debugName);
 
 	//delete the old texData;
 	for (int i = 0; i < 6; ++i) {
@@ -160,7 +122,53 @@ UniqueVulkanTexture VulkanTexture::VulkanCubemapFromFiles(
 	return UniqueVulkanTexture(cubeTex);
 }
 
-void VulkanTexture::GenerateTextureInternal(uint32_t texWidth, uint32_t texHeight, uint32_t texMipCount, bool texIsCubemap, const std::string& debugName, vk::Format texFormat, vk::ImageAspectFlags texAspect, vk::ImageUsageFlags texUsage, vk::ImageLayout outLayout, vk::PipelineStageFlags pipeType) {
+void VulkanTexture::GenerateTextureFromDataInternal(VulkanRenderer* vkRenderer, uint32_t width, uint32_t height, uint32_t channelCount, bool isCube, std::vector<char*>dataSrcs, const std::string& debugName) {
+	vk::Format				format = vk::Format::eR8G8B8A8Unorm;
+	vk::ImageAspectFlags	aspect = vk::ImageAspectFlagBits::eColor;
+	vk::ImageLayout		layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+	vk::ImageUsageFlags	usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc;
+
+	int mipCount = (int)floor(log2(float(std::min(width, height)))) + 1;
+
+	GenerateTextureInternal(vkRenderer, width, height, mipCount, isCube, debugName, format, aspect, usage, layout, vk::PipelineStageFlagBits::eFragmentShader);
+
+	//tex is currently empty, need to fill it with our data from stbimage!
+	int faceSize = width * height * channelCount;
+	int allocationSize = faceSize * (int)dataSrcs.size();
+
+	VulkanBuffer stagingBuffer = vkRenderer->CreateStagingBuffer(allocationSize);
+
+	vk::Device device = vkRenderer->GetDevice();
+	vk::CommandBuffer cmdBuffer = vkRenderer->BeginCmdBuffer();
+
+	//our buffer now has memory! Copy some texture date to it...
+	char* gpuPtr = (char*)device.mapMemory(stagingBuffer.allocationInfo.deviceMemory, 0, allocationSize);
+	for (int i = 0; i < dataSrcs.size(); ++i) {
+		memcpy(gpuPtr, dataSrcs[i], faceSize);
+		gpuPtr += faceSize;
+		//We'll also set up each layer of the image to accept new transfers
+		Vulkan::ImageTransitionBarrier(cmdBuffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectType, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, 0, i);
+	}
+	device.unmapMemory(stagingBuffer.allocationInfo.deviceMemory);
+
+	vk::BufferImageCopy copyInfo;
+	copyInfo.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor).setMipLevel(0).setLayerCount((uint32_t)dataSrcs.size());
+	copyInfo.imageExtent = vk::Extent3D(width, height, 1);
+
+	//Copy from staging buffer to image memory...
+	cmdBuffer.copyBufferToImage(stagingBuffer.buffer, image, vk::ImageLayout::eTransferDstOptimal, copyInfo);
+
+	if (mipCount > 1) {
+		GenerateMipMaps(cmdBuffer, vk::ImageLayout::eShaderReadOnlyOptimal, vk::PipelineStageFlagBits::eFragmentShader);
+	}
+	else {
+		Vulkan::ImageTransitionBarrier(cmdBuffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, aspectType, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader);
+	}
+	vkRenderer->SubmitCmdBufferWait(cmdBuffer);
+	//Staging buffer will fall out of scope and be auto destroyed
+}
+
+void VulkanTexture::GenerateTextureInternal(VulkanRenderer* vkRenderer, uint32_t texWidth, uint32_t texHeight, uint32_t texMipCount, bool texIsCubemap, const std::string& debugName, vk::Format texFormat, vk::ImageAspectFlags texAspect, vk::ImageUsageFlags texUsage, vk::ImageLayout outLayout, vk::PipelineStageFlags pipeType) {
 	width		= texWidth;
 	height		= texHeight;
 	mipCount	= texMipCount;
@@ -188,7 +196,7 @@ void VulkanTexture::GenerateTextureInternal(uint32_t texWidth, uint32_t texHeigh
 	vmaCreateImage(allocator, (VkImageCreateInfo*)&createInfo, &vmaallocInfo, (VkImage*)&image, &allocationHandle, &allocationInfo);
 
 	vk::ImageViewCreateInfo createInfo = vk::ImageViewCreateInfo()
-		.setViewType(layerCount == 6 ? vk::ImageViewType::eCube : vk::ImageViewType::e2D)
+		.setViewType(texIsCubemap ? vk::ImageViewType::eCube : vk::ImageViewType::e2D)
 		.setFormat(format)
 		.setSubresourceRange(vk::ImageSubresourceRange(aspectType, 0, mipCount, 0, layerCount))
 		.setImage(image);
@@ -196,67 +204,46 @@ void VulkanTexture::GenerateTextureInternal(uint32_t texWidth, uint32_t texHeigh
 	defaultView = vkRenderer->GetDevice().createImageViewUnique(createInfo);
 
 	Vulkan::SetDebugName(vkRenderer->GetDevice(), vk::ObjectType::eImage, Vulkan::GetVulkanHandle(image), debugName);
-	Vulkan::SetDebugName(vkRenderer->GetDevice(),vk::ObjectType::eImageView, Vulkan::GetVulkanHandle(*defaultView), debugName);
+	Vulkan::SetDebugName(vkRenderer->GetDevice(), vk::ObjectType::eImageView, Vulkan::GetVulkanHandle(*defaultView), debugName);
 
 	vk::CommandBuffer tempBuffer = vkRenderer->BeginCmdBuffer();
-	vkRenderer->ImageTransitionBarrier(tempBuffer, GetImage(), vk::ImageLayout::eUndefined, outLayout, aspectType, vk::PipelineStageFlagBits::eTopOfPipe, pipeType);
+	Vulkan::ImageTransitionBarrier(tempBuffer, GetImage(), vk::ImageLayout::eUndefined, outLayout, aspectType, vk::PipelineStageFlagBits::eTopOfPipe, pipeType);
 	vkRenderer->SubmitCmdBufferWait(tempBuffer);
-}
-
-UniqueVulkanTexture VulkanTexture::CreateDepthTexture(uint32_t width, uint32_t height, const std::string& debugName, bool hasStencil, bool useMips) {
-	vk::Format			 format		= hasStencil ? vk::Format::eD24UnormS8Uint : vk::Format::eD32Sfloat;
-	vk::ImageAspectFlags aspect		= hasStencil ? vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil : vk::ImageAspectFlagBits::eDepth;
-	vk::ImageLayout		 layout		= hasStencil ? vk::ImageLayout::eDepthStencilAttachmentOptimal : vk::ImageLayout::eDepthAttachmentOptimal;	
-	vk::ImageUsageFlags  usage		= vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
-
-	VulkanTexture* t = new VulkanTexture();
-	t->GenerateTextureInternal(width, height, 1, false, debugName, format, aspect, usage, layout, vk::PipelineStageFlagBits::eEarlyFragmentTests);
-	return UniqueVulkanTexture(t);
-}
-
-UniqueVulkanTexture VulkanTexture::CreateColourTexture(uint32_t width, uint32_t height, const std::string& debugName, bool isFloat, bool useMips) {
-	vk::Format			 format		= isFloat ? vk::Format::eR32G32B32A32Sfloat : vk::Format::eB8G8R8A8Unorm;
-	vk::ImageAspectFlags aspect		= vk::ImageAspectFlagBits::eColor;
-	vk::ImageLayout		 layout		= vk::ImageLayout::eColorAttachmentOptimal;	
-	vk::ImageUsageFlags  usage		= vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
-	VulkanTexture* t = new VulkanTexture();
-	t->GenerateTextureInternal(width, height, 1, false, debugName, format, aspect, usage, layout, vk::PipelineStageFlagBits::eColorAttachmentOutput);
-	return UniqueVulkanTexture(t);
 }
 
 void VulkanTexture::GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout endLayout, vk::PipelineStageFlags endFlags) {
 	for (int layer = 0; layer < layerCount; ++layer) {	
-		vkRenderer->ImageTransitionBarrier(buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferSrcOptimal, aspectType, vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eTransfer, 0, layer);
-		for (int mip = 1; mip < mipCount; ++mip) {
-
+		Vulkan::ImageTransitionBarrier(buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferSrcOptimal, aspectType, vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eTransfer, 0, layer);
+		
+		for (uint32_t mip = 1; mip < mipCount; ++mip) {
 			vk::ImageBlit blitData;
 			blitData.srcSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
-			.setMipLevel(mip - 1)
-			.setBaseArrayLayer(layer)
-			.setLayerCount(1);
+				.setMipLevel(mip - 1)
+				.setBaseArrayLayer(layer)
+				.setLayerCount(1);
 			blitData.srcOffsets[0] = vk::Offset3D(0, 0, 0);
-			blitData.srcOffsets[1].x = std::max(width >> (mip - 1), 1);
-			blitData.srcOffsets[1].y = std::max(height >> (mip - 1), 1);
+			blitData.srcOffsets[1].x = std::max(width >> (mip - 1), (uint32_t)1);
+			blitData.srcOffsets[1].y = std::max(height >> (mip - 1), (uint32_t)1);
 			blitData.srcOffsets[1].z = 1;
 
 			blitData.dstSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
-			.setMipLevel(mip)
-			.setLayerCount(1)
-			.setBaseArrayLayer(layer);
+				.setMipLevel(mip)
+				.setLayerCount(1)
+				.setBaseArrayLayer(layer);
 			blitData.dstOffsets[0] = vk::Offset3D(0, 0, 0);
-			blitData.dstOffsets[1].x = std::max(width >> mip, 1);
-			blitData.dstOffsets[1].y = std::max(height >> mip, 1);
+			blitData.dstOffsets[1].x = std::max(width >> mip, (uint32_t)1);
+			blitData.dstOffsets[1].y = std::max(height >> mip, (uint32_t)1);
 			blitData.dstOffsets[1].z = 1;
 
-			vkRenderer->ImageTransitionBarrier(buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectType, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, mip, layer);
+			Vulkan::ImageTransitionBarrier(buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectType, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, mip, layer);
 			buffer.blitImage(image, vk::ImageLayout::eTransferSrcOptimal, image, vk::ImageLayout::eTransferDstOptimal, blitData, vk::Filter::eLinear);
-			vkRenderer->ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferSrcOptimal, endLayout, aspectType, vk::PipelineStageFlagBits::eTransfer, endFlags, mip - 1, layer);
+			Vulkan::ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferSrcOptimal, endLayout, aspectType, vk::PipelineStageFlagBits::eTransfer, endFlags, mip - 1, layer);
 
 			if (mip < this->mipCount - 1) {
-				vkRenderer->ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal, aspectType, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, mip, layer);
+				Vulkan::ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal, aspectType, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, mip, layer);
 			}
 			else {
-				vkRenderer->ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferDstOptimal, endLayout, aspectType, vk::PipelineStageFlagBits::eTransfer, endFlags, mip, layer);
+				Vulkan::ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferDstOptimal, endLayout, aspectType, vk::PipelineStageFlagBits::eTransfer, endFlags, mip, layer);
 			}
 		}
 	}

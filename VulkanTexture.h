@@ -15,20 +15,18 @@ namespace NCL::Rendering {
 	class VulkanTexture : public TextureBase	{
 		friend class VulkanRenderer;
 	public:
+		~VulkanTexture();
 
-		VulkanTexture(const std::string& name);
-
-		static UniqueVulkanTexture VulkanCubemapFromFiles(
+		static UniqueVulkanTexture CubemapFromFiles(
+			VulkanRenderer* renderer,
 			const std::string& negativeXFile, const std::string& positiveXFile, 
 			const std::string& negativeYFile, const std::string& positiveYFile,
 			const std::string& negativeZFile, const std::string& positiveZFile,
 			const std::string& debugName = "CubeMap");
 
-		static TextureBase* TextureFromFilenameLoader(const std::string& name);//Compatability function with old course modules
-
-		static UniqueVulkanTexture TextureFromFile(const std::string& name);
-		static UniqueVulkanTexture CreateDepthTexture(uint32_t width, uint32_t height, const std::string& debugName = "DefaultDepth", bool hasStencil = true, bool mips = false);
-		static UniqueVulkanTexture CreateColourTexture(uint32_t width, uint32_t height, const std::string& debugName = "DefaultColour", bool isFloat = false, bool mips = false);
+		static UniqueVulkanTexture TextureFromFile(VulkanRenderer* renderer, const std::string& name);
+		static UniqueVulkanTexture CreateDepthTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName = "DefaultDepth", bool hasStencil = true, bool mips = false);
+		static UniqueVulkanTexture CreateColourTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName = "DefaultColour", bool isFloat = false, bool mips = false);
 
 		vk::ImageView GetDefaultView() const {
 			return *defaultView;
@@ -42,15 +40,12 @@ namespace NCL::Rendering {
 			return image;
 		}
 
-		~VulkanTexture();
-
 	protected:
-
 		VulkanTexture();
 		void GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout endLayout, vk::PipelineStageFlags endFlags);
 
-		void	GenerateTextureInternal(uint32_t width, uint32_t height, uint32_t mipcount, bool isCube, const std::string& debugName, vk::Format format, vk::ImageAspectFlags aspect, vk::ImageUsageFlags usage, vk::ImageLayout outLayout, vk::PipelineStageFlags pipeType);
-		void	GenerateTextureFromDataInternal(uint32_t width, uint32_t height, uint32_t channelCount, bool isCube, std::vector<char*>dataSrcs, const std::string& debugName);
+		void	GenerateTextureInternal(VulkanRenderer* renderer, uint32_t width, uint32_t height, uint32_t mipcount, bool isCube, const std::string& debugName, vk::Format format, vk::ImageAspectFlags aspect, vk::ImageUsageFlags usage, vk::ImageLayout outLayout, vk::PipelineStageFlags pipeType);
+		void	GenerateTextureFromDataInternal(VulkanRenderer* renderer, uint32_t width, uint32_t height, uint32_t channelCount, bool isCube, std::vector<char*>dataSrcs, const std::string& debugName);
 
 		vk::UniqueImageView	defaultView;
 		vk::Image			image;
@@ -64,15 +59,9 @@ namespace NCL::Rendering {
 		vk::ImageCreateInfo		createInfo;
 		vk::ImageAspectFlags	aspectType;
 
-		int width;
-		int height;
-		int mipCount;
-		int layerCount;
-
-		static void SetRenderer(VulkanRenderer* r) {
-			vkRenderer = r;
-		}	
-
-		static VulkanRenderer* vkRenderer;
+		uint32_t width;
+		uint32_t height;
+		uint32_t mipCount;
+		uint32_t layerCount;
 	};
 }
