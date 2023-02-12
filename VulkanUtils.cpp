@@ -70,6 +70,35 @@ void	Vulkan::ImageTransitionBarrier(vk::CommandBuffer  cmdBuffer, vk::Image imag
 	cmdBuffer.pipelineBarrier(srcStage, dstStage, vk::DependencyFlags(), 0, nullptr, 0, nullptr, 1, &memoryBarrier);
 }
 
+/*
+void VulkanRenderer::TransitionSwapchainForRendering(vk::CommandBuffer buffer) {
+	Vulkan::ImageTransitionBarrier(buffer, swapChainList[currentSwap]->image,
+		vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal,
+		vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+		vk::PipelineStageFlagBits::eColorAttachmentOutput);
+}
+
+void VulkanRenderer::TransitionSwapchainForPresenting(vk::CommandBuffer buffer) {
+	Vulkan::ImageTransitionBarrier(buffer, swapChainList[currentSwap]->image,
+		vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
+		vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eAllCommands,
+		vk::PipelineStageFlagBits::eBottomOfPipe);
+}
+*/
+
+void Vulkan::TransitionPresentToColour(vk::CommandBuffer  buffer, vk::Image t) {
+	ImageTransitionBarrier(buffer, t,
+		vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal,
+		vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+		vk::PipelineStageFlagBits::eColorAttachmentOutput);
+}
+
+void Vulkan::TransitionColourToPresent(vk::CommandBuffer  buffer, vk::Image t) {
+	ImageTransitionBarrier(buffer, t,
+		vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR, vk::ImageAspectFlagBits::eColor,
+		vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eBottomOfPipe);
+}
+
 void Vulkan::TransitionColourToSampler(vk::CommandBuffer  buffer, vk::Image t) {
 	ImageTransitionBarrier(buffer, t,
 		vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor,

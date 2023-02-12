@@ -29,6 +29,7 @@ using namespace Rendering;
 vk::PhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
 
 VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
+	allocatorInfo		= {};
 	depthBuffer			= nullptr;
 	frameBuffers		= nullptr;
 	currentSwap			= 0;
@@ -184,6 +185,7 @@ bool VulkanRenderer::InitGPUDevice() {
 	presentQueue	= device.getQueue(gfxPresentIndex, 0);
 
 	deviceMemoryProperties = gpu.getMemoryProperties();
+	deviceProperties = gpu.getProperties();
 
 	delete Vulkan::dispatcher;
 	Vulkan::dispatcher = new vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr , device); //DEVICE dispatcher
@@ -315,10 +317,9 @@ void	VulkanRenderer::InitCommandPools() {
 }
 
 void	VulkanRenderer::InitMemoryAllocator() {
-	VmaAllocatorCreateInfo allocatorInfo = {};
 	allocatorInfo.physicalDevice = gpu;
-	allocatorInfo.device = device;
-	allocatorInfo.instance = instance;
+	allocatorInfo.device	= device;
+	allocatorInfo.instance	= instance;
 	vmaCreateAllocator(&allocatorInfo, &memoryAllocator);
 }
 
@@ -532,7 +533,9 @@ void VulkanRenderer::SwapBuffers() {
 
 	if (!hostWindow.IsMinimised()) {
 		vk::CommandBuffer cmds = BeginCmdBuffer();
-		TransitionSwapchainForPresenting(cmds);
+
+		Vulkan::TransitionColourToPresent(cmds, swapChainList[currentSwap]->image);
+
 		SubmitCmdBufferWait(cmds);
 		device.freeCommandBuffers(commandPool, cmds);
 
@@ -685,57 +688,6 @@ void VulkanRenderer::UpdateBufferDescriptor(vk::DescriptorSet set, const VulkanB
 	device.updateDescriptorSets(1, &descriptorWrites, 0, nullptr);
 }
 
-VulkanBuffer VulkanRenderer::CreateBufferInternal(vk::BufferCreateInfo& vkInfo, VmaAllocationCreateInfo& vmaInfo) {
-	VulkanBuffer buffer;
-	buffer.size			= vkInfo.size;
-	buffer.allocator	= memoryAllocator;
-
-	vmaCreateBuffer(memoryAllocator, (VkBufferCreateInfo*)&vkInfo, &vmaInfo, (VkBuffer*)&(buffer.buffer), &buffer.allocationHandle, &buffer.allocationInfo);
-
-	return buffer;
-}
-
-VulkanBuffer	VulkanRenderer::CreateStagingBuffer(size_t size) {
-	vk::BufferUsageFlags	usage		= vk::BufferUsageFlagBits::eTransferSrc;
-	vk::MemoryPropertyFlags properties	= vk::MemoryPropertyFlagBits::eHostVisible;
-
-	vk::BufferCreateInfo bufferInfo(vk::BufferCreateFlags(), size, usage);
-	VmaAllocationCreateInfo vmaallocInfo = {};	
-	vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-	vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-	vmaallocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
-
-	return CreateBufferInternal(bufferInfo, vmaallocInfo);
-}
-
-VulkanBuffer	VulkanRenderer::CreatePersistentBuffer(size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags extraProperties) {
-	vk::MemoryPropertyFlags properties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent | extraProperties;
-
-	vk::BufferCreateInfo bufferInfo(vk::BufferCreateFlags(), size, usage);
-	VmaAllocationCreateInfo vmaallocInfo = {};
-	vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;// | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-	vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-	vmaallocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
-
-	return CreateBufferInternal(bufferInfo, vmaallocInfo);
-}
-
-VulkanBuffer VulkanRenderer::CreateBuffer(size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties) {
-	vk::BufferCreateInfo bufferInfo(vk::BufferCreateFlags(), size, usage);
-
-	VmaAllocationCreateInfo vmaallocInfo = {};
-	vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-	vmaallocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
-
-	return CreateBufferInternal(bufferInfo, vmaallocInfo);
-}
-
-void VulkanRenderer::UploadBufferData(VulkanBuffer& uniform, void* data, int dataSize) {
-	void* mappedData = device.mapMemory(uniform.allocationInfo.deviceMemory, uniform.allocationInfo.offset, uniform.allocationInfo.size);
-	memcpy(mappedData, data, dataSize);
-	device.unmapMemory(uniform.allocationInfo.deviceMemory);
-}
-
 vk::UniqueDescriptorSet VulkanRenderer::BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool, uint32_t variableDescriptorCount) {
 	if (!pool) {
 		pool = defaultDescriptorPool;
@@ -788,20 +740,6 @@ void	VulkanRenderer::BeginDefaultRenderPass(vk::CommandBuffer  cmds) {
 	cmds.beginRenderPass(defaultBeginInfo, vk::SubpassContents::eInline);
 	cmds.setViewport(0, 1, &defaultViewport);
 	cmds.setScissor(0, 1, &defaultScissor);
-}
-
-void VulkanRenderer::TransitionSwapchainForRendering(vk::CommandBuffer buffer) {
-	Vulkan::ImageTransitionBarrier(buffer, swapChainList[currentSwap]->image,
-		vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal,
-		vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-		vk::PipelineStageFlagBits::eColorAttachmentOutput);
-}
-
-void VulkanRenderer::TransitionSwapchainForPresenting(vk::CommandBuffer buffer) {
-	Vulkan::ImageTransitionBarrier(buffer, swapChainList[currentSwap]->image,
-		vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
-		vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eAllCommands,
-		vk::PipelineStageFlagBits::eBottomOfPipe);
 }
 
 void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {

@@ -8,6 +8,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "VulkanMesh.h"
 #include "VulkanRenderer.h"
 #include "VulkanUtils.h"
+#include "VulkanBufferBuilder.h"
 
 using namespace NCL;
 using namespace Rendering;
@@ -93,14 +94,17 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 	size_t indexDataSize		= sizeof(int) * GetIndexCount();
 	size_t stagingBufferSize	= vertexDataSize + indexDataSize;
 
-	vertexBuffer = renderer->CreateBuffer(vertexDataSize,
-		vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-		vk::MemoryPropertyFlagBits::eDeviceLocal);
+	vertexBuffer = VulkanBufferBuilder(vertexDataSize, debugName + " vertex attributes")
+		.WithBufferUsage(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst)
+		.Build(renderer->GetDevice(), renderer->GetMemoryAllocator());
 
-	VulkanBuffer stagingBuffer = renderer->CreateStagingBuffer(stagingBufferSize);
+	VulkanBuffer stagingBuffer = VulkanBufferBuilder(stagingBufferSize)
+		.WithBufferUsage(vk::BufferUsageFlagBits::eTransferSrc)
+		.WithHostVisibility()
+		.Build(renderer->GetDevice(), renderer->GetMemoryAllocator());
 
 	//need to now copy vertex data to device memory
-	char* dataPtr = (char*)sourceDevice.mapMemory(stagingBuffer.allocationInfo.deviceMemory, stagingBuffer.allocationInfo.offset, stagingBuffer.allocationInfo.size);
+	char* dataPtr = (char*)stagingBuffer.Map();
 	size_t offset = 0;
 	for (size_t i = 0; i < usedAttributes.size(); ++i) {
 		//We're going to use the same buffer for every attribute
@@ -116,7 +120,7 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 	if (GetIndexCount() > 0) {
 		memcpy(dataPtr + indexDataOffset, GetIndexData().data(), indexDataSize);
 	}
-	sourceDevice.unmapMemory(stagingBuffer.allocationInfo.deviceMemory);
+	stagingBuffer.Unmap();
 
 	vk::CommandBuffer cmdBuffer = renderer->BeginCmdBuffer();
 	{//Now to transfer the vertex data from the staging buffer to the vertex buffer
@@ -126,9 +130,9 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 	}
 
 	if (GetIndexCount() > 0) {	//Make the index buffer if there are any!
-		indexBuffer = renderer->CreateBuffer(indexDataSize,
-			vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
+		indexBuffer = VulkanBufferBuilder(vertexDataSize, debugName + " vertex indices")
+			.WithBufferUsage(vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst)
+			.Build(renderer->GetDevice(), renderer->GetMemoryAllocator());
 
 		vk::BufferCopy copyRegion;
 		copyRegion.size = indexDataSize;
@@ -137,13 +141,6 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 		cmdBuffer.copyBuffer(stagingBuffer.buffer, indexBuffer.buffer, copyRegion);	
 	}
 	renderer->SubmitCmdBufferWait(cmdBuffer);
-
-	if (!debugName.empty()) {
-		Vulkan::SetDebugName(sourceDevice, vk::ObjectType::eBuffer, Vulkan::GetVulkanHandle(vertexBuffer.buffer), debugName + " vertex attributes");
-		if (GetIndexCount() > 0) {
-			Vulkan::SetDebugName(sourceDevice, vk::ObjectType::eBuffer, Vulkan::GetVulkanHandle(indexBuffer.buffer), debugName + " vertex indices");
-		}
-	}
 	//The staging buffer is auto destroyed, but that's fine!
 	//We made the GPU wait for the commands to complete, so 
 	//the staging buffer has been read from at this point

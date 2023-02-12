@@ -56,12 +56,6 @@ namespace NCL::Rendering {
 		void				SubmitCmdBuffer(vk::CommandBuffer  buffer);
 		vk::Fence 			SubmitCmdBufferFence(vk::CommandBuffer  buffer);
 
-		VulkanBuffer	CreateStagingBuffer(size_t size);
-		VulkanBuffer	CreatePersistentBuffer(size_t, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags extraProperties = (vk::MemoryPropertyFlags)0);
-
-		VulkanBuffer CreateBuffer(size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties = vk::MemoryPropertyFlagBits::eDeviceLocal);
-		void		 UploadBufferData(VulkanBuffer& uniform, void* data, int dataSize);
-
 		void		BeginDefaultRenderPass(vk::CommandBuffer  cmds);
 
 		void		BeginDefaultRendering(vk::CommandBuffer  cmds);
@@ -74,9 +68,6 @@ namespace NCL::Rendering {
 		VmaAllocator GetMemoryAllocator() const {
 			return memoryAllocator;
 		}
-
-		void TransitionSwapchainForRendering(vk::CommandBuffer buffer);
-		void TransitionSwapchainForPresenting(vk::CommandBuffer buffer);
 
 	protected:		
 		struct SwapChain {
@@ -117,8 +108,6 @@ namespace NCL::Rendering {
 
 		virtual void SetupDeviceInfo(vk::DeviceCreateInfo& info) {}
 
-		VulkanBuffer CreateBufferInternal(vk::BufferCreateInfo& vkInfo, VmaAllocationCreateInfo& vmaInfo);
-
 		vk::SurfaceKHR		surface;
 		vk::Format			surfaceFormat;
 		vk::ColorSpaceKHR	surfaceSpace;
@@ -144,7 +133,8 @@ namespace NCL::Rendering {
 		uint32_t			copyQueueIndex;
 		uint32_t			gfxPresentIndex;
 
-		VmaAllocator		memoryAllocator;
+		VmaAllocator			memoryAllocator;
+		VmaAllocatorCreateInfo	allocatorInfo;
 
 		//Initialisation Info
 		std::vector<const char*> deviceExtensions;

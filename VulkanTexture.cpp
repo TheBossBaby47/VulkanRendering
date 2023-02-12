@@ -10,6 +10,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "TextureLoader.h"
 #include "VulkanUtils.h"
 #include "VulkanBuffers.h"
+#include "VulkanBufferBuilder.h"
 
 using namespace NCL;
 using namespace Rendering;
@@ -136,20 +137,24 @@ void VulkanTexture::GenerateTextureFromDataInternal(VulkanRenderer* vkRenderer, 
 	int faceSize = width * height * channelCount;
 	int allocationSize = faceSize * (int)dataSrcs.size();
 
-	VulkanBuffer stagingBuffer = vkRenderer->CreateStagingBuffer(allocationSize);
+	VulkanBuffer stagingBuffer = VulkanBufferBuilder(allocationSize)
+		.WithBufferUsage(vk::BufferUsageFlagBits::eTransferSrc)
+		.WithHostVisibility()
+		//.WithPersistentMapping()
+		.Build(vkRenderer->GetDevice(), vkRenderer->GetMemoryAllocator());
 
 	vk::Device device = vkRenderer->GetDevice();
 	vk::CommandBuffer cmdBuffer = vkRenderer->BeginCmdBuffer();
 
 	//our buffer now has memory! Copy some texture date to it...
-	char* gpuPtr = (char*)device.mapMemory(stagingBuffer.allocationInfo.deviceMemory, 0, allocationSize);
+	char* gpuPtr = (char*)stagingBuffer.Map();
 	for (int i = 0; i < dataSrcs.size(); ++i) {
 		memcpy(gpuPtr, dataSrcs[i], faceSize);
 		gpuPtr += faceSize;
 		//We'll also set up each layer of the image to accept new transfers
 		Vulkan::ImageTransitionBarrier(cmdBuffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectType, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, 0, i);
 	}
-	device.unmapMemory(stagingBuffer.allocationInfo.deviceMemory);
+	stagingBuffer.Unmap();
 
 	vk::BufferImageCopy copyInfo;
 	copyInfo.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor).setMipLevel(0).setLayerCount((uint32_t)dataSrcs.size());

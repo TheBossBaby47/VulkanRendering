@@ -21,10 +21,13 @@ namespace NCL::Rendering {
 
 		void SetDebugName(vk::Device d, vk::ObjectType t, uint64_t handle, const std::string& debugName);
 
-		void BeginDebugArea(vk::CommandBuffer b, const std::string& name);
-		void EndDebugArea(vk::CommandBuffer b);
+		void BeginDebugArea(vk::CommandBuffer buffer, const std::string& name);
+		void EndDebugArea(vk::CommandBuffer buffer);
 
-		void	ImageTransitionBarrier(vk::CommandBuffer  buffer, vk::Image i, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int mipLevel = 0, int layer = 0);
+		void ImageTransitionBarrier(vk::CommandBuffer  buffer, vk::Image i, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int mipLevel = 0, int layer = 0);
+
+		void TransitionPresentToColour(vk::CommandBuffer  buffer, vk::Image t);
+		void TransitionColourToPresent(vk::CommandBuffer  buffer, vk::Image t);
 
 		void TransitionColourToSampler(vk::CommandBuffer  buffer, vk::Image t);
 		void TransitionDepthToSampler(vk::CommandBuffer  buffer, vk::Image t, bool doStencil = false);
@@ -32,9 +35,7 @@ namespace NCL::Rendering {
 		void TransitionSamplerToColour(vk::CommandBuffer  buffer, vk::Image t);
 		void TransitionSamplerToDepth(vk::CommandBuffer  buffer, vk::Image t, bool doStencil = false);
 
-		void DispatchCompute(vk::CommandBuffer  to, unsigned int xCount, unsigned int yCount = 0, unsigned int zCount = 0);
-
-
+		void DispatchCompute(vk::CommandBuffer  buffer, unsigned int xCount, unsigned int yCount = 0, unsigned int zCount = 0);
 
 		extern vk::DispatchLoaderDynamic* dispatcher;
 		void SetNullDescriptor(vk::Device device, vk::DescriptorSetLayout layout);
