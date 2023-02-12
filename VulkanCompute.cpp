@@ -27,15 +27,15 @@ VulkanCompute::VulkanCompute(vk::Device device, const std::string& filename) : l
 	info.pName	= "main";
 }
 
-int VulkanCompute::GetThreadXCount() const {
+uint32_t VulkanCompute::GetThreadXCount() const {
 	return localThreadSize[0];
 }
 
-int VulkanCompute::GetThreadYCount() const {
+uint32_t VulkanCompute::GetThreadYCount() const {
 	return localThreadSize[1];
 }
 
-int VulkanCompute::GetThreadZCount() const {
+uint32_t VulkanCompute::GetThreadZCount() const {
 	return localThreadSize[2];
 }
 

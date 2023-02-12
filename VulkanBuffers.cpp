@@ -36,3 +36,7 @@ void* VulkanBuffer::Map() {
 void	VulkanBuffer::Unmap() {
 	vmaUnmapMemory(allocator, allocationHandle);
 }
+
+void* VulkanBuffer::Data() {
+	return allocationInfo.pMappedData;
+}

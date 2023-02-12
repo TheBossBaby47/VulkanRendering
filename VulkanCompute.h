@@ -13,14 +13,14 @@ namespace NCL::Rendering {
 		VulkanCompute(vk::Device sourceDevice, const std::string& filename);
 		~VulkanCompute() {}
 
-		int GetThreadXCount() const;
-		int GetThreadYCount() const;
-		int GetThreadZCount() const;
+		uint32_t GetThreadXCount() const;
+		uint32_t GetThreadYCount() const;
+		uint32_t GetThreadZCount() const;
 
 		void	FillShaderStageCreateInfo(vk::ComputePipelineCreateInfo& info) const;
 
 	protected:
-		int localThreadSize[3];
+		uint32_t localThreadSize[3];
 		vk::PipelineShaderStageCreateInfo info;
 		vk::UniqueShaderModule	computeModule;
 	};

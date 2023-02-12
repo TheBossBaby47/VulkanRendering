@@ -55,11 +55,8 @@ VulkanBufferBuilder& VulkanBufferBuilder::WithUniqueAllocation() {
 
 VulkanBuffer VulkanBufferBuilder::Build(vk::Device device, VmaAllocator allocator) {
 	outputBuffer.allocator = allocator;
-	outputBuffer.sourceDevice = device;
 
 	vmaCreateBuffer(allocator, (VkBufferCreateInfo*)&vkInfo, &vmaInfo, (VkBuffer*)&(outputBuffer.buffer), &outputBuffer.allocationHandle, &outputBuffer.allocationInfo);
-
-	outputBuffer.mappedData = outputBuffer.allocationInfo.pMappedData;
 
 	if (!debugName.empty()) {
 		Vulkan::SetDebugName(device, vk::ObjectType::eBuffer, Vulkan::GetVulkanHandle(outputBuffer.buffer), debugName);
