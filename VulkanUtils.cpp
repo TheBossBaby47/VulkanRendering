@@ -130,3 +130,10 @@ void Vulkan::TransitionSamplerToDepth(vk::CommandBuffer  buffer, vk::Image t, bo
 void Vulkan::DispatchCompute(vk::CommandBuffer  to, unsigned int xCount, unsigned int yCount, unsigned int zCount) {
 	to.dispatch(xCount, yCount, zCount);
 }
+
+bool Vulkan::MessageAssert(bool condition, const char* msg) {
+	if (!condition) {
+		std::cerr << msg << "\n";
+	}
+	return condition;
+}

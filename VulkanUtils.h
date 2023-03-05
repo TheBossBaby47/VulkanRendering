@@ -37,6 +37,8 @@ namespace NCL::Rendering {
 
 		void DispatchCompute(vk::CommandBuffer  buffer, unsigned int xCount, unsigned int yCount = 0, unsigned int zCount = 0);
 
+		bool MessageAssert(bool condition, const char* msg);
+
 		extern vk::DispatchLoaderDynamic* dispatcher;
 		void SetNullDescriptor(vk::Device device, vk::DescriptorSetLayout layout);
 		extern std::map<vk::Device, vk::DescriptorSetLayout > nullDescriptors;

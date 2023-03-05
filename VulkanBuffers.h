@@ -60,5 +60,10 @@ namespace NCL::Rendering {
 
 		void*	Map();
 		void	Unmap();
+
+		//Convenience function so we can use this struct in place of a vkBuffer when necessary
+		operator vk::Buffer() const {
+			return buffer;
+		}
 	};
 };

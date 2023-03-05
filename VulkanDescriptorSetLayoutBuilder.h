@@ -19,12 +19,11 @@ namespace NCL::Rendering {
 		};
 		~VulkanDescriptorSetLayoutBuilder() {};
 
-		VulkanDescriptorSetLayoutBuilder& WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll);
-		VulkanDescriptorSetLayoutBuilder& WithUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll);
-		VulkanDescriptorSetLayoutBuilder& WithStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll);
+		VulkanDescriptorSetLayoutBuilder& WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		VulkanDescriptorSetLayoutBuilder& WithUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		VulkanDescriptorSetLayoutBuilder& WithStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 
-		VulkanDescriptorSetLayoutBuilder& WithBindlessAccess();//Buffers after this are bindless!
-		VulkanDescriptorSetLayoutBuilder& WithDescriptorBufferAccess();
+		VulkanDescriptorSetLayoutBuilder& WithCreationFlags(vk::DescriptorSetLayoutCreateFlags flags);
 
 		vk::UniqueDescriptorSetLayout Build(vk::Device device);
 
@@ -32,7 +31,8 @@ namespace NCL::Rendering {
 		std::string	debugName;
 		bool usingBindless;
 		bool usingDescriptorBuffer;
-		std::vector< vk::DescriptorSetLayoutBinding> addedBindings;
+		std::vector< vk::DescriptorSetLayoutBinding>	addedBindings;
+		std::vector< vk::DescriptorBindingFlags>		addedFlags;
 
 		vk::DescriptorSetLayoutCreateInfo createInfo;
 	};

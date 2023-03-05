@@ -134,6 +134,12 @@ VulkanPipelineBuilder& VulkanPipelineBuilder::WithDescriptorSetLayout(uint32_t s
 	return *this;
 }
 
+VulkanPipelineBuilder& VulkanPipelineBuilder::WithTessellationPatchVertexCount(uint32_t controlPointsPerPatch) {
+	tessellationCreate.setPatchControlPoints(controlPointsPerPatch);
+	pipelineCreate.setPTessellationState(&tessellationCreate);
+	return *this;
+}
+
 VulkanPipelineBuilder& VulkanPipelineBuilder::WithDescriptorBuffers() {
 	pipelineCreate.flags |= vk::PipelineCreateFlagBits::eDescriptorBufferEXT;
 	return *this;

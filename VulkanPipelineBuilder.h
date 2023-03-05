@@ -28,6 +28,8 @@ namespace NCL::Rendering {
 
 		VulkanPipelineBuilder& WithVertexInputState(const vk::PipelineVertexInputStateCreateInfo& spec);
 
+		VulkanPipelineBuilder& WithTessellationPatchVertexCount(uint32_t controlPointsPerPatch);
+
 		VulkanPipelineBuilder& WithTopology(vk::PrimitiveTopology topology);
 
 		VulkanPipelineBuilder& WithShader(const UniqueVulkanShader& shader);
@@ -59,6 +61,7 @@ namespace NCL::Rendering {
 		vk::PipelineMultisampleStateCreateInfo		sampleCreate;
 		vk::PipelineDynamicStateCreateInfo			dynamicCreate;
 		vk::PipelineVertexInputStateCreateInfo		vertexCreate;
+		vk::PipelineTessellationStateCreateInfo		tessellationCreate;
 		vk::PipelineLayout layout;
 
 		std::vector< vk::PipelineColorBlendAttachmentState>			blendAttachStates;

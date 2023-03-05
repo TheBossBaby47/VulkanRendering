@@ -8,12 +8,8 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "VulkanRenderer.h"
 #include "VulkanMesh.h"
 #include "VulkanTexture.h"
-#include "VulkanPipeline.h"
-#include "VulkanBuffers.h"
-#include "VulkanUtils.h"
-#include "VulkanDescriptorSetLayoutBuilder.h"
 
-#include "TextureLoader.h"
+#include "VulkanUtils.h"
 
 #ifdef _WIN32
 #include "Win32Window.h"
@@ -30,24 +26,12 @@ vk::PhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
 
 VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
 	allocatorInfo		= {};
-	depthBuffer			= nullptr;
-	frameBuffers		= nullptr;
-	currentSwap			= 0;
-	computeQueueIndex	= 0;
-	gfxQueueIndex		= 0;
-	gfxPresentIndex		= 0;
-
-	majorVersion		= 1;
-	minorVersion		= 1;
 
 	deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 	deviceExtensions.push_back("VK_KHR_dynamic_rendering");
 	deviceExtensions.push_back("VK_KHR_maintenance4");
-
 	deviceExtensions.push_back("VK_KHR_depth_stencil_resolve");
 	deviceExtensions.push_back("VK_KHR_create_renderpass2");
-	deviceLayers.push_back("VK_LAYER_LUNARG_standard_validation");
-
 
 	instanceExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
 	instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
@@ -55,6 +39,8 @@ VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
 #ifdef WIN32
 	instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #endif
+	
+	deviceLayers.push_back("VK_LAYER_LUNARG_standard_validation");
 
 	instanceLayers.push_back("VK_LAYER_KHRONOS_validation");
 }
@@ -161,20 +147,21 @@ bool VulkanRenderer::InitGPUDevice() {
 	vk::PhysicalDeviceFeatures2 deviceFeatures;
 	deviceFeatures.setFeatures(features);
 
-	vk::PhysicalDeviceDynamicRenderingFeaturesKHR dynamicRendering(true);
-	deviceFeatures.pNext = &dynamicRendering;
-	
 	vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
 		.setQueueCreateInfoCount(1)
-		.setPQueueCreateInfos(&queueInfo)
-		.setEnabledLayerCount((uint32_t)deviceLayers.size())
+		.setPQueueCreateInfos(&queueInfo);
+
+	SetupDevice(deviceFeatures);	
+
+	vk::PhysicalDeviceDynamicRenderingFeaturesKHR dynamicRendering(true);
+	dynamicRendering.pNext = deviceFeatures.pNext;
+	deviceFeatures.pNext = &dynamicRendering;
+	
+	createInfo.setEnabledLayerCount((uint32_t)deviceLayers.size())
 		.setPpEnabledLayerNames(deviceLayers.data())
 		.setEnabledExtensionCount((uint32_t)deviceExtensions.size())
 		.setPpEnabledExtensionNames(deviceExtensions.data());
 
-	SetupDeviceInfo(createInfo);
-
-	dynamicRendering.pNext = (void*)createInfo.pNext;
 	createInfo.pNext = &deviceFeatures;
 
 	device = gpu.createDevice(createInfo);
@@ -516,9 +503,19 @@ void	VulkanRenderer::BeginFrame() {
 	defaultCmdBuffer.begin(vk::CommandBufferBeginInfo());
 	defaultCmdBuffer.setViewport(0, 1, &defaultViewport);
 	defaultCmdBuffer.setScissor(0, 1, &defaultScissor);
+
+	if (autoTransitionFrameBuffer) {
+		Vulkan::TransitionPresentToColour(defaultCmdBuffer, swapChainList[currentSwap]->image);
+	}
+	if (autoBeginDynamicRendering) {
+		BeginDefaultRendering(defaultCmdBuffer);
+	}
 }
 
 void	VulkanRenderer::EndFrame() {
+	if (autoBeginDynamicRendering) {
+		EndRendering(defaultCmdBuffer);
+	}
 	if (hostWindow.IsMinimised()) {
 		SubmitCmdBufferWait(defaultCmdBuffer);
 	}
@@ -723,7 +720,7 @@ void VulkanRenderer::SubmitDrawCallLayer(const VulkanMesh& m, unsigned int layer
 	}
 }
 
-void VulkanRenderer::SubmitDrawCall(const VulkanMesh& m, vk::CommandBuffer  to, int instanceCount) {
+void VulkanRenderer::SubmitDrawCall(vk::CommandBuffer  to, const VulkanMesh& m, int instanceCount) {
 	VkDeviceSize baseOffset = 0;
 
 	m.BindToCommandBuffer(to);
@@ -750,24 +747,25 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 	colourAttachment.setImageView(swapChainList[currentSwap]->view)
 		.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
 		.setLoadOp(vk::AttachmentLoadOp::eClear)
+		.setStoreOp(vk::AttachmentStoreOp::eStore)
 		.setClearValue(Vulkan::ClearColour(0.2f, 0.2f, 0.2f, 1.0f));
 
 	vk::RenderingAttachmentInfoKHR depthAttachment;
 	depthAttachment.setImageView(depthBuffer->GetDefaultView())
 		.setImageLayout(vk::ImageLayout::eDepthAttachmentOptimal)
 		.setLoadOp(vk::AttachmentLoadOp::eClear)
-		.setStoreOp(vk::AttachmentStoreOp::eDontCare);
-	depthAttachment.clearValue.setDepthStencil({ 1.0f, ~0U });
+		.setStoreOp(vk::AttachmentStoreOp::eStore)
+		.clearValue.setDepthStencil({ 1.0f, ~0U });
 
 	renderInfo.setColorAttachments(colourAttachment)
-		.setPDepthAttachment(&depthAttachment)
-		.setPStencilAttachment(&depthAttachment);
+		.setPDepthAttachment(&depthAttachment);
+		//.setPStencilAttachment(&depthAttachment);
 
 	renderInfo.setRenderArea(defaultScreenRect);
 
-	cmds.beginRendering(renderInfo, *NCL::Rendering::Vulkan::dispatcher);
+	cmds.beginRendering(renderInfo);
 }
 
 void	VulkanRenderer::EndRendering(vk::CommandBuffer  cmds) {
-	cmds.endRendering(*NCL::Rendering::Vulkan::dispatcher);
+	cmds.endRendering();
 }

@@ -13,53 +13,56 @@ using std::string;
 using namespace NCL;
 using namespace Rendering;
 
-VulkanShaderBuilder& VulkanShaderBuilder::WithMeshBinary(const string& name, const std::string& entry) {
-	shaderFiles[(int)ShaderStages::Mesh] = name;
-	entryPoints[(int)ShaderStages::Mesh] = entry;
+const char* ErrorMessages[(uint32_t)ShaderStages::MAXSIZE] =
+{
+	"Multiple mesh shaders attached to shader object!",
+	"Multiple vertex shaders attached to shader object!",
+	"Multiple fragment shaders attached to shader object!",
+	"Multiple geometry shaders attached to shader object!",
+	"Multiple TCS shaders attached to shader object!",
+	"Multiple TES shaders attached to shader object!",
+
+};
+
+VulkanShaderBuilder& VulkanShaderBuilder::AddBinary(ShaderStages stage, const std::string& name, const std::string& entry) {
+	const uint32_t index = (uint32_t)stage;
+	assert(Vulkan::MessageAssert(shaderFiles[index].empty(), ErrorMessages[index]));
+	assert(Vulkan::MessageAssert(index != (uint32_t)ShaderStages::MAXSIZE, "Invalid shader stage!"));
+	shaderFiles[index] = name;
+	entryPoints[index] = entry;
 	return *this;
+}
+
+VulkanShaderBuilder& VulkanShaderBuilder::WithMeshBinary(const string& name, const std::string& entry) {
+	return AddBinary(ShaderStages::Mesh, name, entry);
 }
 
 VulkanShaderBuilder& VulkanShaderBuilder::WithVertexBinary(const string& name, const std::string& entry) {
-	shaderFiles[(int)ShaderStages::Vertex] = name;
-	entryPoints[(int)ShaderStages::Vertex] = entry;
-	return *this;
+	return AddBinary(ShaderStages::Vertex, name, entry);
 }
 
 VulkanShaderBuilder& VulkanShaderBuilder::WithFragmentBinary(const string& name, const std::string& entry) {
-	shaderFiles[(int)ShaderStages::Fragment] = name;
-	entryPoints[(int)ShaderStages::Fragment] = entry;
-	return *this;
+	return AddBinary(ShaderStages::Fragment, name, entry);
 }
 
 VulkanShaderBuilder& VulkanShaderBuilder::WithGeometryBinary(const string& name, const std::string& entry) {
-	shaderFiles[(int)ShaderStages::Geometry] = name;
-	entryPoints[(int)ShaderStages::Geometry] = entry;
-	return *this;
+	return AddBinary(ShaderStages::Geometry, name, entry);
 }
 
 VulkanShaderBuilder& VulkanShaderBuilder::WithTessControlBinary(const string& name, const std::string& entry) {
-	shaderFiles[(int)ShaderStages::Domain] = name;
-	entryPoints[(int)ShaderStages::Domain] = entry;
-	return *this;
+	return AddBinary(ShaderStages::TessControl, name, entry);
 }
 
 VulkanShaderBuilder& VulkanShaderBuilder::WithTessEvalBinary(const string& name, const std::string& entry) {
-	shaderFiles[(int)ShaderStages::Hull] = name;
-	entryPoints[(int)ShaderStages::Hull] = entry;
-	return *this;
+	return AddBinary(ShaderStages::TessEval, name, entry);
 }
 
 UniqueVulkanShader VulkanShaderBuilder::Build(vk::Device device) {
 	VulkanShader* newShader = new VulkanShader();
-
 	//mesh and 'traditional' pipeline are mutually exclusive
-	if (!shaderFiles[(int)ShaderStages::Mesh].empty() &&
-		!shaderFiles[(int)ShaderStages::Vertex].empty()
-	) {
-		//TODO formalize error message?
-		return nullptr;
-	}
-
+	assert(Vulkan::MessageAssert(!(!shaderFiles[(int)ShaderStages::Mesh].empty() && !shaderFiles[(int)ShaderStages::Vertex].empty()),
+		"Cannot use traditional vertex pipeline with mesh shaders!"));
+	
 	for (int i = 0; i < (int)ShaderStages::MAXSIZE; ++i) {
 		if (!shaderFiles[i].empty()) {
 			newShader->AddBinaryShaderModule(shaderFiles[i],(ShaderStages)i, device, entryPoints[i]);

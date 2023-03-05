@@ -14,7 +14,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 using namespace NCL;
 using namespace Rendering;
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders) {
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	vk::DescriptorSetLayoutBinding binding = vk::DescriptorSetLayoutBinding()
 		.setBinding((uint32_t)addedBindings.size())
 		.setDescriptorCount(count)
@@ -22,11 +22,12 @@ VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithSamplers
 		.setStageFlags(inShaders);
 
 	addedBindings.emplace_back(binding);
+	addedFlags.emplace_back(bindingFlags);
 
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders) {
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	vk::DescriptorSetLayoutBinding binding = vk::DescriptorSetLayoutBinding()
 		.setBinding((uint32_t)addedBindings.size())
 		.setDescriptorCount(count)
@@ -34,10 +35,12 @@ VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithUniformB
 		.setStageFlags(inShaders);
 
 	addedBindings.emplace_back(binding);
+	addedFlags.emplace_back(bindingFlags);
+
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders) {
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	vk::DescriptorSetLayoutBinding binding = vk::DescriptorSetLayoutBinding()
 		.setBinding((uint32_t)addedBindings.size())
 		.setDescriptorCount(count)
@@ -45,37 +48,23 @@ VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithStorageB
 		.setStageFlags(inShaders);
 
 	addedBindings.emplace_back(binding);
+	addedFlags.emplace_back(bindingFlags);
+
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithBindlessAccess() {
-	usingBindless = true;
-	return *this;
-}
-
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithDescriptorBufferAccess() {
-	usingDescriptorBuffer = true;
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithCreationFlags(vk::DescriptorSetLayoutCreateFlags flags) {
+	createInfo.flags |= flags;
 	return *this;
 }
 
 vk::UniqueDescriptorSetLayout VulkanDescriptorSetLayoutBuilder::Build(vk::Device device) {
 	createInfo.setBindings(addedBindings);
 	vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsInfo;
-	std::vector< vk::DescriptorBindingFlags> bindingFlags;
-
-	if (usingBindless) {
-		for (int i = 0; i < addedBindings.size(); ++i) {
-			bindingFlags.push_back(vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount | vk::DescriptorBindingFlagBits::eUpdateAfterBind);
-		}
-		bindingFlagsInfo.setBindingFlags(bindingFlags);
-		createInfo.pNext = &bindingFlagsInfo;
-
-		createInfo.flags |= vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
-	}
-	if (usingDescriptorBuffer) {
-		createInfo.flags |= vk::DescriptorSetLayoutCreateFlagBits::eDescriptorBufferEXT;
-	}
 	
+	bindingFlagsInfo.setBindingFlags(addedFlags);
+
+	createInfo.pNext = &bindingFlagsInfo;
 	vk::UniqueDescriptorSetLayout layout = std::move(device.createDescriptorSetLayoutUnique(createInfo));
 	if (!debugName.empty()) {
 		Vulkan::SetDebugName(device, vk::ObjectType::eDescriptorSetLayout, Vulkan::GetVulkanHandle(*layout), debugName);

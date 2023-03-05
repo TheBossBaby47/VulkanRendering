@@ -41,7 +41,7 @@ namespace NCL::Rendering {
 		virtual void	InitDefaultRenderPass();
 		virtual void	InitDefaultDescriptorPool();
 
-		void SubmitDrawCall(const VulkanMesh& m, vk::CommandBuffer  to, int instanceCount = 1);
+		void SubmitDrawCall(vk::CommandBuffer  to, const VulkanMesh& m, int instanceCount = 1);
 		void SubmitDrawCallLayer(const VulkanMesh& m, unsigned int layer, vk::CommandBuffer  to, int instanceCount = 1);
 
 		vk::UniqueDescriptorSet BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool = {}, uint32_t variableDescriptorCount = 0);
@@ -76,8 +76,8 @@ namespace NCL::Rendering {
 			vk::CommandBuffer	frameCmds;
 		};
 		std::vector<SwapChain*> swapChainList;	
-		uint32_t				currentSwap;
-		vk::Framebuffer*		frameBuffers;		
+		uint32_t				currentSwap		= 0;
+		vk::Framebuffer* frameBuffers			= nullptr;
 
 		vk::PipelineCache		pipelineCache;
 		vk::Device				device;		//Device handle	
@@ -94,7 +94,36 @@ namespace NCL::Rendering {
 		vk::CommandPool			commandPool;			//Source Command Buffers from here
 		vk::CommandPool			computeCommandPool;		//Source Command Buffers from here
 
-	//private: 
+
+		//Initialisation Info
+		std::vector<const char*> deviceExtensions;
+		std::vector<const char*> deviceLayers;
+		std::vector<vk::QueueFamilyProperties> deviceQueueProps;
+
+		std::vector<const char*>	instanceExtensions;
+		std::vector<const char*>	instanceLayers;
+
+		int majorVersion = 1;
+		int minorVersion = 1;
+
+		bool				autoTransitionFrameBuffer = true;
+		bool				autoBeginDynamicRendering = true;
+
+		vk::SurfaceKHR		surface;
+		vk::Format			surfaceFormat;
+		vk::ColorSpaceKHR	surfaceSpace;
+
+		UniqueVulkanTexture depthBuffer;
+
+		vk::SwapchainKHR	swapChain;
+		VmaAllocator			memoryAllocator;
+		VmaAllocatorCreateInfo	allocatorInfo;
+
+		vk::PhysicalDevice GetPhysicalDevice() const {
+			return gpu;
+		}
+
+	private: 
 		void	InitCommandPools();
 		bool	InitInstance();
 		bool	InitPhysicalDevice();
@@ -106,16 +135,9 @@ namespace NCL::Rendering {
 		bool	InitDeviceQueueIndices();
 		bool	CreateDefaultFrameBuffers();
 
-		virtual void SetupDeviceInfo(vk::DeviceCreateInfo& info) {}
+		virtual void SetupDevice(vk::PhysicalDeviceFeatures2& deviceFeatures) {}
 
-		vk::SurfaceKHR		surface;
-		vk::Format			surfaceFormat;
-		vk::ColorSpaceKHR	surfaceSpace;
-
-		uint32_t			numFrameBuffers;
-		UniqueVulkanTexture depthBuffer;
-
-		vk::SwapchainKHR	swapChain;
+		uint32_t			numFrameBuffers = 0;
 
 		vk::Instance		instance;	//API Instance
 		vk::PhysicalDevice	gpu;		//GPU in use
@@ -128,23 +150,9 @@ namespace NCL::Rendering {
 		vk::Queue			copyQueue;
 		vk::Queue			presentQueue;
 
-		uint32_t			gfxQueueIndex;
-		uint32_t			computeQueueIndex;
-		uint32_t			copyQueueIndex;
-		uint32_t			gfxPresentIndex;
-
-		VmaAllocator			memoryAllocator;
-		VmaAllocatorCreateInfo	allocatorInfo;
-
-		//Initialisation Info
-		std::vector<const char*> deviceExtensions;
-		std::vector<const char*> deviceLayers;
-		std::vector<vk::QueueFamilyProperties> deviceQueueProps;
-
-		std::vector<const char*>	instanceExtensions;
-		std::vector<const char*>	instanceLayers;
-
-		int majorVersion = 1;
-		int minorVersion = 1;
+		uint32_t			gfxQueueIndex			= 0;
+		uint32_t			computeQueueIndex		= 0;
+		uint32_t			copyQueueIndex			= 0;
+		uint32_t			gfxPresentIndex			= 0;
 	};
 }

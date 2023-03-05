@@ -24,11 +24,15 @@ namespace NCL::Rendering {
 		VulkanShaderBuilder& WithTessControlBinary(const std::string& name, const std::string& entry = "main");
 		VulkanShaderBuilder& WithTessEvalBinary(const std::string& name, const std::string& entry = "main");
 
+		VulkanShaderBuilder& AddBinary(ShaderStages stage, const std::string& name, const std::string& entry = "main");
+
 		UniqueVulkanShader Build(vk::Device device);
 
 	protected:
 		std::string shaderFiles[(int)ShaderStages::MAXSIZE];
 		std::string entryPoints[(int)ShaderStages::MAXSIZE];
 		std::string debugName;
+
+
 	};
 }
