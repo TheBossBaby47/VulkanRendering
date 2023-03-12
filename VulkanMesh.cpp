@@ -45,44 +45,65 @@ VulkanMesh::~VulkanMesh()	{
 }
 
 void VulkanMesh::UploadToGPU(RendererBase* r)  {
-	if (!ValidateMeshData()) {
-		return;
-	}
+	assert(ValidateMeshData());
+
 	VulkanRenderer* renderer = (VulkanRenderer*)r;
 
-	vk::Device sourceDevice = renderer->GetDevice();
+	vk::Queue gfxQueue = renderer->GetGraphicsQueue();
 
-	int vSize		= 0; //how much data each vertex takes up
+	vk::CommandBuffer cmdBuffer = renderer->BeginCmdBuffer();
 
+	size_t allocationSize = CalculateGPUAllocationSize();
+
+	VulkanBuffer stagingBuffer = VulkanBufferBuilder(allocationSize)
+		.WithBufferUsage(vk::BufferUsageFlagBits::eTransferSrc)
+		.WithHostVisibility()
+		.Build(renderer->GetDevice(), renderer->GetMemoryAllocator());
+
+	UploadToGPU(renderer, gfxQueue, cmdBuffer, stagingBuffer);
+
+	renderer->SubmitCmdBufferWait(cmdBuffer);
+	//The staging buffer is auto destroyed, but that's fine!
+	//We made the GPU wait for the commands to complete, so 
+	//the staging buffer has been read from at this point
+}
+
+void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::CommandBuffer cmdBuffer, VulkanBuffer& stagingBuffer) {
 	usedAttributes.clear();
 	attributeBindings.clear();
 	attributeDescriptions.clear();
 
+	vk::Device sourceDevice = renderer->GetDevice();
+
 	vector<const char*> attributeDataSources;//Pointer for each attribute in CPU memory
+
+	size_t vSize = 0;
 
 	auto atrributeFunc = [&](VertexAttribute attribute, size_t count, const char* data) {
 		if (count > 0) {
 			usedAttributes.emplace_back(attribute);
 			attributeDataSources.push_back(data);
-			vSize += (int)attributeSizes[attribute];
+			vSize += attributeSizes[attribute];
 		}
 	};
 
-	atrributeFunc(VertexAttribute::Positions,		GetPositionData().size()	, (const char*)GetPositionData().data());
-	atrributeFunc(VertexAttribute::Colours,			GetColourData().size()		, (const char*)GetColourData().data());
-	atrributeFunc(VertexAttribute::TextureCoords,	GetTextureCoordData().size(), (const char*)GetTextureCoordData().data());
-	atrributeFunc(VertexAttribute::Normals,			GetNormalData().size()		, (const char*)GetNormalData().data());
-	atrributeFunc(VertexAttribute::Tangents,		GetTangentData().size()		, (const char*)GetTangentData().data());
-	atrributeFunc(VertexAttribute::JointWeights,	GetSkinWeightData().size()	, (const char*)GetSkinWeightData().data());
-	atrributeFunc(VertexAttribute::JointIndices,	GetSkinIndexData().size()	, (const char*)GetSkinIndexData().data());
+	atrributeFunc(VertexAttribute::Positions, GetPositionData().size(), (const char*)GetPositionData().data());
+	atrributeFunc(VertexAttribute::Colours, GetColourData().size(), (const char*)GetColourData().data());
+	atrributeFunc(VertexAttribute::TextureCoords, GetTextureCoordData().size(), (const char*)GetTextureCoordData().data());
+	atrributeFunc(VertexAttribute::Normals, GetNormalData().size(), (const char*)GetNormalData().data());
+	atrributeFunc(VertexAttribute::Tangents, GetTangentData().size(), (const char*)GetTangentData().data());
+	atrributeFunc(VertexAttribute::JointWeights, GetSkinWeightData().size(), (const char*)GetSkinWeightData().data());
+	atrributeFunc(VertexAttribute::JointIndices, GetSkinIndexData().size(), (const char*)GetSkinIndexData().data());
 
 	for (uint32_t i = 0; i < usedAttributes.size(); ++i) {
 		//Which vertex attribute slot should Vulkan buffer index i map to?
-		int attributeType = usedAttributes[i]; 
+		int attributeType = usedAttributes[i];
 		//Describes the vertex attribute state
 		attributeBindings.emplace_back(i, (unsigned int)attributeSizes[attributeType], vk::VertexInputRate::eVertex);
 		//Describes the vertex attribute data type and offset
-		attributeDescriptions.emplace_back(attributeType, i, attributeFormats[attributeType], 0);		
+		attributeDescriptions.emplace_back(attributeType, i, attributeFormats[attributeType], 0);
+
+		attributeMask |= (1 << attributeType);
 	}
 
 	vertexInputState = vk::PipelineVertexInputStateCreateInfo({},
@@ -90,25 +111,22 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 		(uint32_t)attributeDescriptions.size(), &attributeDescriptions[0]
 	);
 
-	size_t vertexDataSize		= vSize * GetVertexCount();
-	size_t indexDataSize		= sizeof(int) * GetIndexCount();
-	size_t stagingBufferSize	= vertexDataSize + indexDataSize;
+	size_t vertexDataSize	= vSize * GetVertexCount();
+	size_t indexDataSize	= sizeof(int) * GetIndexCount();
+	size_t totalAllocationSize = vertexDataSize + indexDataSize;
 
-	vertexBuffer = VulkanBufferBuilder(vertexDataSize, debugName + " vertex attributes")
-		.WithBufferUsage(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst)
-		.Build(renderer->GetDevice(), renderer->GetMemoryAllocator());
+	assert(stagingBuffer.size >= (totalAllocationSize));
 
-	VulkanBuffer stagingBuffer = VulkanBufferBuilder(stagingBufferSize)
-		.WithBufferUsage(vk::BufferUsageFlagBits::eTransferSrc)
-		.WithHostVisibility()
-		.Build(renderer->GetDevice(), renderer->GetMemoryAllocator());
+	gpuBuffer = VulkanBufferBuilder(totalAllocationSize, debugName + " mesh Data")
+		.WithBufferUsage(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst)
+		.Build(sourceDevice, renderer->GetMemoryAllocator());
 
 	//need to now copy vertex data to device memory
 	char* dataPtr = (char*)stagingBuffer.Map();
 	size_t offset = 0;
 	for (size_t i = 0; i < usedAttributes.size(); ++i) {
 		//We're going to use the same buffer for every attribute
-		usedBuffers.push_back(vertexBuffer.buffer);
+		usedBuffers.push_back(gpuBuffer.buffer);
 		//But each attribute starts at a different offset
 		usedOffsets.push_back(offset);
 		//Copy the data from CPU to GPU-visible memory
@@ -122,34 +140,57 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 	}
 	stagingBuffer.Unmap();
 
-	vk::CommandBuffer cmdBuffer = renderer->BeginCmdBuffer();
-	{//Now to transfer the vertex data from the staging buffer to the vertex buffer
+	{//Now to transfer the mesh data from the staging buffer to the gpu-only buffer
 		vk::BufferCopy copyRegion;
-		copyRegion.size = vertexDataSize;	
-		cmdBuffer.copyBuffer(stagingBuffer.buffer, vertexBuffer.buffer, copyRegion);
+		copyRegion.size = vertexDataSize + indexDataSize;
+		cmdBuffer.copyBuffer(stagingBuffer.buffer, gpuBuffer.buffer, copyRegion);
 	}
-
-	if (GetIndexCount() > 0) {	//Make the index buffer if there are any!
-		indexBuffer = VulkanBufferBuilder(vertexDataSize, debugName + " vertex indices")
-			.WithBufferUsage(vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst)
-			.Build(renderer->GetDevice(), renderer->GetMemoryAllocator());
-
-		vk::BufferCopy copyRegion;
-		copyRegion.size = indexDataSize;
-		copyRegion.srcOffset = indexDataOffset;
-
-		cmdBuffer.copyBuffer(stagingBuffer.buffer, indexBuffer.buffer, copyRegion);	
-	}
-	renderer->SubmitCmdBufferWait(cmdBuffer);
-	//The staging buffer is auto destroyed, but that's fine!
-	//We made the GPU wait for the commands to complete, so 
-	//the staging buffer has been read from at this point
+	indexOffset		= vertexDataSize;
 }
 
 void VulkanMesh::BindToCommandBuffer(vk::CommandBuffer  buffer) const {
 	buffer.bindVertexBuffers(0, (unsigned int)usedBuffers.size(), &usedBuffers[0], &usedOffsets[0]);
 
 	if (GetIndexCount() > 0) {
-		buffer.bindIndexBuffer(indexBuffer.buffer, 0, vk::IndexType::eUint32);
+		buffer.bindIndexBuffer(gpuBuffer.buffer, indexOffset, vk::IndexType::eUint32);
 	}
+}
+
+vk::PrimitiveTopology VulkanMesh::GetVulkanTopology() const {
+	assert((uint32_t)primType < GeometryPrimitive::MAX_PRIM);
+
+	const vk::PrimitiveTopology table[] = {
+		vk::PrimitiveTopology::ePointList,
+		vk::PrimitiveTopology::eLineList,
+		vk::PrimitiveTopology::eTriangleList,
+		vk::PrimitiveTopology::eTriangleFan,
+		vk::PrimitiveTopology::eTriangleStrip,
+		vk::PrimitiveTopology::ePatchList
+	};
+	return table[(uint32_t)primType];
+}
+
+uint32_t VulkanMesh::GetAttributeMask() const {
+	return attributeMask;
+}
+
+size_t VulkanMesh::CalculateGPUAllocationSize() const {
+	size_t vSize = 0;
+	auto atrributeSizeFunc = [&](VertexAttribute attribute, size_t count) {
+		if (count > 0) {
+			vSize += (int)attributeSizes[attribute];
+		}
+	};
+
+	atrributeSizeFunc(VertexAttribute::Positions, GetPositionData().size());
+	atrributeSizeFunc(VertexAttribute::Colours, GetColourData().size());
+	atrributeSizeFunc(VertexAttribute::TextureCoords, GetTextureCoordData().size());
+	atrributeSizeFunc(VertexAttribute::Normals, GetNormalData().size());
+	atrributeSizeFunc(VertexAttribute::Tangents, GetTangentData().size());
+	atrributeSizeFunc(VertexAttribute::JointWeights, GetSkinWeightData().size());
+	atrributeSizeFunc(VertexAttribute::JointIndices, GetSkinIndexData().size());
+
+	size_t vertexDataSize = vSize * GetVertexCount();
+	size_t indexDataSize = sizeof(int) * GetIndexCount();
+	return vertexDataSize + indexDataSize;
 }

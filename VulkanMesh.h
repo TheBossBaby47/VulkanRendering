@@ -21,28 +21,28 @@ namespace NCL::Rendering {
 			return vertexInputState;
 		}
 
-		vk::PrimitiveTopology GetVulkanTopology() const {
-			switch (primType) {
-				case GeometryPrimitive::Points:			return vk::PrimitiveTopology::ePointList;
-				case GeometryPrimitive::Lines:			return vk::PrimitiveTopology::eLineList;
-				case GeometryPrimitive::Triangles:		return vk::PrimitiveTopology::eTriangleList;
-				case GeometryPrimitive::TriangleFan:	return vk::PrimitiveTopology::eTriangleFan;
-				case GeometryPrimitive::TriangleStrip:	return vk::PrimitiveTopology::eTriangleStrip;
-				case GeometryPrimitive::Patches:		return vk::PrimitiveTopology::ePatchList;
-			}
-			return vk::PrimitiveTopology::eTriangleList;
-		}
-
 		void BindToCommandBuffer(vk::CommandBuffer  buffer) const;
+
 		void UploadToGPU(RendererBase* renderer) override;
+		void UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::CommandBuffer buffer, VulkanBuffer& stagingBuffer);
+
+		uint32_t	GetAttributeMask() const;
+		size_t		CalculateGPUAllocationSize() const;
+		vk::PrimitiveTopology GetVulkanTopology() const;
+
+		operator const vk::PipelineVertexInputStateCreateInfo&() const {
+			return vertexInputState;
+		}
 
 	protected:
 		vk::PipelineVertexInputStateCreateInfo				vertexInputState;
 		std::vector<vk::VertexInputAttributeDescription>	attributeDescriptions;
 		std::vector<vk::VertexInputBindingDescription>		attributeBindings;		
 	
-		VulkanBuffer vertexBuffer;
-		VulkanBuffer indexBuffer;
+		VulkanBuffer gpuBuffer;
+		size_t indexOffset = 0;
+	
+		uint32_t attributeMask = 0;
 
 		vector<vk::Buffer>			usedBuffers;
 		vector<vk::DeviceSize>		usedOffsets;

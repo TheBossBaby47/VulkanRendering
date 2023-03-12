@@ -69,6 +69,19 @@ namespace NCL::Rendering {
 			return memoryAllocator;
 		}
 
+		vk::Queue GetGraphicsQueue() const {
+			return gfxQueue;
+		}
+
+		vk::Queue GetCopyQueue() const {
+			return copyQueue;
+		}
+
+		vk::Queue GetAsyncComputeQueue() const {
+			return computeQueue;
+		}
+
+
 	protected:		
 		struct SwapChain {
 			vk::Image			image;
