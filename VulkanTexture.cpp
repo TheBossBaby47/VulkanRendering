@@ -169,7 +169,7 @@ void VulkanTexture::GenerateTextureFromDataInternal(VulkanRenderer* vkRenderer, 
 	else {
 		Vulkan::ImageTransitionBarrier(cmdBuffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, aspectType, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader);
 	}
-	vkRenderer->SubmitCmdBufferWait(cmdBuffer);
+	vkRenderer->SubmitCmdBufferWait(cmdBuffer, CommandBufferType::Graphics);
 	//Staging buffer will fall out of scope and be auto destroyed
 }
 
@@ -213,7 +213,7 @@ void VulkanTexture::GenerateTextureInternal(VulkanRenderer* vkRenderer, uint32_t
 
 	vk::CommandBuffer tempBuffer = vkRenderer->BeginCmdBuffer();
 	Vulkan::ImageTransitionBarrier(tempBuffer, GetImage(), vk::ImageLayout::eUndefined, outLayout, aspectType, vk::PipelineStageFlagBits::eTopOfPipe, pipeType);
-	vkRenderer->SubmitCmdBufferWait(tempBuffer);
+	vkRenderer->SubmitCmdBufferWait(tempBuffer, CommandBufferType::Graphics);
 }
 
 void VulkanTexture::GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout endLayout, vk::PipelineStageFlags endFlags) {

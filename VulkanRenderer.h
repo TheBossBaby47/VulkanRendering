@@ -21,6 +21,13 @@ namespace NCL::Rendering {
 	class VulkanTexture;
 	struct VulkanBuffer;
 
+	enum class CommandBufferType {
+		Graphics,
+		AsyncCompute,
+		Copy,
+		MAX_BUFFERS
+	};
+
 	class VulkanRenderer : public RendererBase {
 		friend class VulkanMesh;
 		friend class VulkanTexture;
@@ -49,12 +56,15 @@ namespace NCL::Rendering {
 		void	UpdateBufferDescriptor(vk::DescriptorSet set, const VulkanBuffer& data, int bindingSlot, vk::DescriptorType bufferType);
 		void	UpdateImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
 
-		vk::CommandBuffer	BeginComputeCmdBuffer(const std::string& debugName = "");
-		vk::CommandBuffer	BeginCmdBuffer(const std::string& debugName = "");
+		//vk::CommandBuffer	BeginAsyncComputeCmdBuffer(const std::string& debugName = "");
+		//vk::CommandBuffer	BeginCopyCmdBuffer(const std::string& debugName = "");
+		//vk::CommandBuffer	BeginCmdBuffer(const std::string& debugName = "");
 
-		void				SubmitCmdBufferWait(vk::CommandBuffer buffer);
-		void				SubmitCmdBuffer(vk::CommandBuffer  buffer);
-		vk::Fence 			SubmitCmdBufferFence(vk::CommandBuffer  buffer);
+		vk::CommandBuffer	BeginCmdBuffer(CommandBufferType type = CommandBufferType::Graphics, const std::string& debugName = "");
+
+		void				SubmitCmdBufferWait(vk::CommandBuffer buffer, CommandBufferType type = CommandBufferType::Graphics);
+		void				SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferType type = CommandBufferType::Graphics);
+		vk::Fence 			SubmitCmdBufferFence(vk::CommandBuffer  buffer, CommandBufferType type = CommandBufferType::Graphics);
 
 		void		BeginDefaultRenderPass(vk::CommandBuffer  cmds);
 
@@ -69,20 +79,17 @@ namespace NCL::Rendering {
 			return memoryAllocator;
 		}
 
-		vk::Queue GetGraphicsQueue() const {
-			return gfxQueue;
+		vk::Queue GetQueue(CommandBufferType type) {
+			return queueTypes[(uint32_t)type];
 		}
 
-		vk::Queue GetCopyQueue() const {
-			return copyQueue;
+		vk::CommandPool GetCommandPool(CommandBufferType type) {
+			return commandPools[(uint32_t)type];
 		}
-
-		vk::Queue GetAsyncComputeQueue() const {
-			return computeQueue;
-		}
-
 
 	protected:		
+		vk::CommandBuffer	BeginCmdBuffer(vk::CommandPool fromPool, const std::string& debugName);
+
 		struct SwapChain {
 			vk::Image			image;
 			vk::ImageView		view;
@@ -98,15 +105,16 @@ namespace NCL::Rendering {
 		vk::ClearValue			defaultClearValues[2];
 		vk::Viewport			defaultViewport;
 		vk::Rect2D				defaultScissor;	
-		vk::Rect2D				defaultScreenRect;	
-		vk::CommandBuffer		defaultCmdBuffer;
+		vk::Rect2D				defaultScreenRect;			
 		vk::RenderPass			defaultRenderPass;
 		vk::RenderPassBeginInfo defaultBeginInfo;
 		
 		vk::DescriptorPool		defaultDescriptorPool;	//descriptor sets come from here!
-		vk::CommandPool			commandPool;			//Source Command Buffers from here
-		vk::CommandPool			computeCommandPool;		//Source Command Buffers from here
 
+		vk::CommandPool			commandPools[(uint32_t)CommandBufferType::MAX_BUFFERS];
+		vk::Queue				queueTypes[(uint32_t)CommandBufferType::MAX_BUFFERS];
+
+		vk::CommandBuffer		frameCmds;
 
 		//Initialisation Info
 		std::vector<const char*> deviceExtensions;
@@ -158,9 +166,7 @@ namespace NCL::Rendering {
 		vk::PhysicalDeviceProperties		deviceProperties;
 		vk::PhysicalDeviceMemoryProperties	deviceMemoryProperties;
 
-		vk::Queue			gfxQueue;
-		vk::Queue			computeQueue;
-		vk::Queue			copyQueue;
+
 		vk::Queue			presentQueue;
 
 		uint32_t			gfxQueueIndex			= 0;

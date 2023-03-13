@@ -58,8 +58,11 @@ VulkanRenderer::~VulkanRenderer() {
 	vmaDestroyAllocator(memoryAllocator);
 	device.destroyDescriptorPool(defaultDescriptorPool);
 	device.destroySwapchainKHR(swapChain);
-	device.destroyCommandPool(commandPool);
-	device.destroyCommandPool(computeCommandPool);
+
+	device.destroyCommandPool(commandPools[(uint32_t)CommandBufferType::Graphics]);
+	device.destroyCommandPool(commandPools[(uint32_t)CommandBufferType::Copy]);
+	device.destroyCommandPool(commandPools[(uint32_t)CommandBufferType::AsyncCompute]);
+
 	device.destroyRenderPass(defaultRenderPass);
 	device.destroyPipelineCache(pipelineCache);
 	device.destroy(); //Destroy everything except instance before this gets destroyed!
@@ -88,7 +91,7 @@ bool VulkanRenderer::Init() {
 
 	pipelineCache = device.createPipelineCache(vk::PipelineCacheCreateInfo());
 
-	defaultCmdBuffer = swapChainList[currentSwap]->frameCmds;
+	frameCmds = swapChainList[currentSwap]->frameCmds;
 
 	return true;
 }
@@ -133,10 +136,26 @@ bool VulkanRenderer::InitGPUDevice() {
 	InitDeviceQueueIndices();
 
 	float queuePriority = 0.0f;
-	vk::DeviceQueueCreateInfo queueInfo = vk::DeviceQueueCreateInfo()
+
+	std::vector< vk::DeviceQueueCreateInfo> queueInfos;
+
+	queueInfos.emplace_back(vk::DeviceQueueCreateInfo()
 		.setQueueCount(1)
 		.setQueueFamilyIndex(gfxQueueIndex)
-		.setPQueuePriorities(&queuePriority);
+		.setPQueuePriorities(&queuePriority));
+
+	if (computeQueueIndex != gfxQueueIndex){
+		queueInfos.emplace_back(vk::DeviceQueueCreateInfo()
+			.setQueueCount(1)
+			.setQueueFamilyIndex(computeQueueIndex)
+			.setPQueuePriorities(&queuePriority));
+	}
+	if (copyQueueIndex != gfxQueueIndex) {
+		queueInfos.emplace_back(vk::DeviceQueueCreateInfo()
+			.setQueueCount(1)
+			.setQueueFamilyIndex(copyQueueIndex)
+			.setPQueuePriorities(&queuePriority));
+	}
 
 	vk::PhysicalDeviceFeatures features = vk::PhysicalDeviceFeatures()
 		.setMultiDrawIndirect(true)
@@ -148,8 +167,8 @@ bool VulkanRenderer::InitGPUDevice() {
 	deviceFeatures.setFeatures(features);
 
 	vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
-		.setQueueCreateInfoCount(1)
-		.setPQueueCreateInfos(&queueInfo);
+		.setQueueCreateInfoCount(queueInfos.size())
+		.setPQueueCreateInfos(queueInfos.data());
 
 	SetupDevice(deviceFeatures);	
 
@@ -166,9 +185,9 @@ bool VulkanRenderer::InitGPUDevice() {
 
 	device = gpu.createDevice(createInfo);
 
-	gfxQueue		= device.getQueue(gfxQueueIndex, 0);
-	computeQueue	= device.getQueue(computeQueueIndex, 0);
-	copyQueue		= device.getQueue(copyQueueIndex, 0);
+	queueTypes[(uint32_t)CommandBufferType::Graphics]		= device.getQueue(gfxQueueIndex, 0);
+	queueTypes[(uint32_t)CommandBufferType::AsyncCompute]	= device.getQueue(computeQueueIndex, 0);
+	queueTypes[(uint32_t)CommandBufferType::Copy]			= device.getQueue(copyQueueIndex, 0);
 	presentQueue	= device.getQueue(gfxPresentIndex, 0);
 
 	deviceMemoryProperties = gpu.getMemoryProperties();
@@ -287,7 +306,7 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 		swapChainList.push_back(chain);
 
 		auto buffers = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo(
-			commandPool, vk::CommandBufferLevel::ePrimary, 1));
+			commandPools[(uint32_t)CommandBufferType::Graphics], vk::CommandBufferLevel::ePrimary, 1));
 
 		chain->frameCmds = buffers[0];
 	}
@@ -295,12 +314,15 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 	return (int)images.size();
 }
 
-void	VulkanRenderer::InitCommandPools() {
-	computeCommandPool = device.createCommandPool(vk::CommandPoolCreateInfo(
+void	VulkanRenderer::InitCommandPools() {	
+	commandPools[(uint32_t)CommandBufferType::Graphics] = device.createCommandPool(vk::CommandPoolCreateInfo(
+		vk::CommandPoolCreateFlagBits::eResetCommandBuffer, gfxQueueIndex));
+
+	commandPools[(uint32_t)CommandBufferType::AsyncCompute] = device.createCommandPool(vk::CommandPoolCreateInfo(
 		vk::CommandPoolCreateFlagBits::eResetCommandBuffer, computeQueueIndex));
 
-	commandPool = device.createCommandPool(vk::CommandPoolCreateInfo(
-		vk::CommandPoolCreateFlagBits::eResetCommandBuffer, gfxQueueIndex));
+	commandPools[(uint32_t)CommandBufferType::Copy] = device.createCommandPool(vk::CommandPoolCreateInfo(
+		vk::CommandPoolCreateFlagBits::eResetCommandBuffer, copyQueueIndex));
 }
 
 void	VulkanRenderer::InitMemoryAllocator() {
@@ -310,8 +332,12 @@ void	VulkanRenderer::InitMemoryAllocator() {
 	vmaCreateAllocator(&allocatorInfo, &memoryAllocator);
 }
 
-vk::CommandBuffer VulkanRenderer::BeginComputeCmdBuffer(const std::string& debugName) {
-	vk::CommandBufferAllocateInfo bufferInfo = vk::CommandBufferAllocateInfo(computeCommandPool, vk::CommandBufferLevel::ePrimary, 1);
+vk::CommandBuffer	VulkanRenderer::BeginCmdBuffer(CommandBufferType type, const std::string& debugName) {
+	return BeginCmdBuffer(commandPools[(uint32_t)type], debugName);
+}
+
+vk::CommandBuffer	VulkanRenderer::BeginCmdBuffer(vk::CommandPool fromPool, const std::string& debugName) {
+	vk::CommandBufferAllocateInfo bufferInfo = vk::CommandBufferAllocateInfo(fromPool, vk::CommandBufferLevel::ePrimary, 1);
 
 	auto buffers = device.allocateCommandBuffers(bufferInfo); //Func returns a vector!
 
@@ -322,33 +348,12 @@ vk::CommandBuffer VulkanRenderer::BeginComputeCmdBuffer(const std::string& debug
 	if (!debugName.empty()) {
 		Vulkan::SetDebugName(device, vk::ObjectType::eCommandBuffer, Vulkan::GetVulkanHandle(newBuf), debugName);
 	}
-
 	newBuf.begin(beginInfo);
 	return newBuf;
 }
 
-vk::CommandBuffer VulkanRenderer::BeginCmdBuffer(const std::string& debugName) {
-	vk::CommandBufferAllocateInfo bufferInfo = vk::CommandBufferAllocateInfo(commandPool, vk::CommandBufferLevel::ePrimary, 1);
-
-	auto buffers = device.allocateCommandBuffers(bufferInfo); //Func returns a vector!
-
-	vk::CommandBuffer &newBuf = buffers[0];
-
-	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo();
-
-	newBuf.begin(beginInfo);
-	newBuf.setViewport(0, 1, &defaultViewport);
-	newBuf.setScissor( 0, 1, &defaultScissor);
-
-	if (!debugName.empty()) {
-		Vulkan::SetDebugName(device, vk::ObjectType::eCommandBuffer, Vulkan::GetVulkanHandle(newBuf), debugName);
-	}
-
-	return newBuf;
-}
-
-void		VulkanRenderer::SubmitCmdBufferWait(vk::CommandBuffer  buffer) {
-	vk::Fence fence = SubmitCmdBufferFence(buffer);
+void		VulkanRenderer::SubmitCmdBufferWait(vk::CommandBuffer  buffer, CommandBufferType type) {
+	vk::Fence fence = SubmitCmdBufferFence(buffer, type);
 
 	if (!fence) {
 		return;
@@ -361,7 +366,7 @@ void		VulkanRenderer::SubmitCmdBufferWait(vk::CommandBuffer  buffer) {
 	device.destroyFence(fence);
 }
 
-void 	VulkanRenderer::SubmitCmdBuffer(vk::CommandBuffer  buffer) {
+void 	VulkanRenderer::SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferType type) {
 	if (buffer) {	
 		buffer.end();
 	}
@@ -373,10 +378,10 @@ void 	VulkanRenderer::SubmitCmdBuffer(vk::CommandBuffer  buffer) {
 	submitInfo.setCommandBufferCount(1);
 	submitInfo.setPCommandBuffers(&buffer);
 
-	gfxQueue.submit(submitInfo, {});
+	queueTypes[(uint32_t)type].submit(submitInfo, {});
 }
 
-vk::Fence 	VulkanRenderer::SubmitCmdBufferFence(vk::CommandBuffer  buffer) {
+vk::Fence 	VulkanRenderer::SubmitCmdBufferFence(vk::CommandBuffer  buffer, CommandBufferType type) {
 	vk::Fence fence;
 	if (buffer) {
 		
@@ -392,7 +397,7 @@ vk::Fence 	VulkanRenderer::SubmitCmdBufferFence(vk::CommandBuffer  buffer) {
 	submitInfo.setCommandBufferCount(1);
 	submitInfo.setPCommandBuffers(&buffer);
 
-	gfxQueue.submit(submitInfo, fence);
+	queueTypes[(uint32_t)type].submit(submitInfo, fence);
 
 	return fence;
 }
@@ -409,20 +414,36 @@ bool VulkanRenderer::InitDeviceQueueIndices() {
 	for (unsigned int i = 0; i < deviceQueueProps.size(); ++i) {
 		supportsPresent = gpu.getSurfaceSupportKHR(i, surface);
 
-		if (computeQueueIndex == -1 && deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eCompute) {
-			computeQueueIndex = i;
-		}
-		if (copyQueueIndex == -1 && deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eTransfer) {
-			copyQueueIndex = i;
-		}
-
 		if (gfxQueueIndex == -1 && deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eGraphics) {
 			gfxQueueIndex = i;
 			if (supportsPresent && gfxPresentIndex == -1) {
 				gfxPresentIndex = i;
 			}
 		}
+
+		if (i != gfxQueueIndex && computeQueueIndex == -1 && deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eCompute) {
+			computeQueueIndex = i;
+		}
+
+		if (i != gfxQueueIndex && copyQueueIndex == -1 && deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eTransfer) {
+			copyQueueIndex = i;
+		}
 	}
+
+	if (computeQueueIndex == -1) {
+		computeQueueIndex = gfxPresentIndex;
+	}
+	else {
+		std::cout << __FUNCTION__ << " Device supports async compute!\n";
+	}
+
+	if (copyQueueIndex == -1) {
+		copyQueueIndex = gfxPresentIndex;
+	}
+	else {
+		std::cout << __FUNCTION__ << " Device supports async copy!\n";
+	}
+
 
 	//if (gfxPresentIndex == -1) {
 	//	for (unsigned int i = 0; i < deviceQueueProps.size(); ++i) {
@@ -462,7 +483,7 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 	defaultClearValues[0] = vk::ClearValue(vk::ClearColorValue(std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.0f}));
 	defaultClearValues[1] = vk::ClearValue(vk::ClearDepthStencilValue(1.0f, 0));
 
-	vk::CommandBuffer cmds = BeginCmdBuffer();
+	vk::CommandBuffer cmds = BeginCmdBuffer(CommandBufferType::Graphics);
 
 	std::cout << __FUNCTION__ << " New dimensions: " << windowWidth << " , " << windowHeight << "\n";
 	vkDeviceWaitIdle(device);
@@ -487,7 +508,7 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 
 	CompleteResize();
 
-	SubmitCmdBufferWait(cmds);
+	SubmitCmdBufferWait(cmds, CommandBufferType::Graphics);
 }
 
 void VulkanRenderer::CompleteResize() {
@@ -498,29 +519,29 @@ void	VulkanRenderer::BeginFrame() {
 	//if (hostWindow.IsMinimised()) {
 	//	defaultCmdBuffer = BeginCmdBuffer();
 	//}
-	defaultCmdBuffer.reset({});
+	frameCmds.reset({});
 
-	defaultCmdBuffer.begin(vk::CommandBufferBeginInfo());
-	defaultCmdBuffer.setViewport(0, 1, &defaultViewport);
-	defaultCmdBuffer.setScissor(0, 1, &defaultScissor);
+	frameCmds.begin(vk::CommandBufferBeginInfo());
+	frameCmds.setViewport(0, 1, &defaultViewport);
+	frameCmds.setScissor(0, 1, &defaultScissor);
 
 	if (autoTransitionFrameBuffer) {
-		Vulkan::TransitionPresentToColour(defaultCmdBuffer, swapChainList[currentSwap]->image);
+		Vulkan::TransitionPresentToColour(frameCmds, swapChainList[currentSwap]->image);
 	}
 	if (autoBeginDynamicRendering) {
-		BeginDefaultRendering(defaultCmdBuffer);
+		BeginDefaultRendering(frameCmds);
 	}
 }
 
 void	VulkanRenderer::EndFrame() {
 	if (autoBeginDynamicRendering) {
-		EndRendering(defaultCmdBuffer);
+		EndRendering(frameCmds);
 	}
 	if (hostWindow.IsMinimised()) {
-		SubmitCmdBufferWait(defaultCmdBuffer);
+		SubmitCmdBufferWait(frameCmds, CommandBufferType::Graphics);
 	}
 	else {
-		SubmitCmdBuffer(defaultCmdBuffer);
+		SubmitCmdBuffer(frameCmds, CommandBufferType::Graphics);
 	}
 }
 
@@ -529,14 +550,14 @@ void VulkanRenderer::SwapBuffers() {
 	vk::UniqueFence		presentFence;
 
 	if (!hostWindow.IsMinimised()) {
-		vk::CommandBuffer cmds = BeginCmdBuffer();
+		vk::CommandBuffer cmds = BeginCmdBuffer(CommandBufferType::Graphics);
 
 		Vulkan::TransitionColourToPresent(cmds, swapChainList[currentSwap]->image);
 
-		SubmitCmdBufferWait(cmds);
-		device.freeCommandBuffers(commandPool, cmds);
+		SubmitCmdBufferWait(cmds, CommandBufferType::Graphics);
+		device.freeCommandBuffers(commandPools[(uint32_t)CommandBufferType::Graphics], cmds);
 
-		vk::Result presentResult = gfxQueue.presentKHR(vk::PresentInfoKHR(0, nullptr, 1, &swapChain, &currentSwap, nullptr));
+		vk::Result presentResult = queueTypes[(uint32_t)CommandBufferType::Graphics].presentKHR(vk::PresentInfoKHR(0, nullptr, 1, &swapChain, &currentSwap, nullptr));
 
 		presentSempaphore = device.createSemaphoreUnique(vk::SemaphoreCreateInfo());
 		presentFence	  = device.createFenceUnique(vk::FenceCreateInfo());
@@ -550,7 +571,7 @@ void VulkanRenderer::SwapBuffers() {
 		.setClearValueCount(sizeof(defaultClearValues) / sizeof(vk::ClearValue))
 		.setPClearValues(defaultClearValues);
 
-	defaultCmdBuffer = swapChainList[currentSwap]->frameCmds;
+	frameCmds = swapChainList[currentSwap]->frameCmds;
 
 	if (!hostWindow.IsMinimised()) {
 		vk::Result waitResult = device.waitForFences(*presentFence, true, ~0);

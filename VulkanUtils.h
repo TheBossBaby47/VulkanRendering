@@ -35,7 +35,7 @@ namespace NCL::Rendering {
 		void TransitionSamplerToColour(vk::CommandBuffer  buffer, vk::Image t);
 		void TransitionSamplerToDepth(vk::CommandBuffer  buffer, vk::Image t, bool doStencil = false);
 
-		void DispatchCompute(vk::CommandBuffer  buffer, unsigned int xCount, unsigned int yCount = 0, unsigned int zCount = 0);
+		void DispatchCompute(vk::CommandBuffer  buffer, unsigned int xCount, unsigned int yCount = 1, unsigned int zCount = 1);
 
 		bool MessageAssert(bool condition, const char* msg);
 

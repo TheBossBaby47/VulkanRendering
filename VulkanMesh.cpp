@@ -49,9 +49,9 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 
 	VulkanRenderer* renderer = (VulkanRenderer*)r;
 
-	vk::Queue gfxQueue = renderer->GetGraphicsQueue();
+	vk::Queue gfxQueue = renderer->GetQueue(CommandBufferType::Graphics);
 
-	vk::CommandBuffer cmdBuffer = renderer->BeginCmdBuffer();
+	vk::CommandBuffer cmdBuffer = renderer->BeginCmdBuffer(CommandBufferType::Graphics);
 
 	size_t allocationSize = CalculateGPUAllocationSize();
 
@@ -62,7 +62,7 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 
 	UploadToGPU(renderer, gfxQueue, cmdBuffer, stagingBuffer);
 
-	renderer->SubmitCmdBufferWait(cmdBuffer);
+	renderer->SubmitCmdBufferWait(cmdBuffer, CommandBufferType::Graphics);
 	//The staging buffer is auto destroyed, but that's fine!
 	//We made the GPU wait for the commands to complete, so 
 	//the staging buffer has been read from at this point
@@ -181,6 +181,8 @@ size_t VulkanMesh::CalculateGPUAllocationSize() const {
 			vSize += (int)attributeSizes[attribute];
 		}
 	};
+
+	//vSize += GetPositionData().size() * attributeSizes[VertexAttribute::Positions];
 
 	atrributeSizeFunc(VertexAttribute::Positions, GetPositionData().size());
 	atrributeSizeFunc(VertexAttribute::Colours, GetColourData().size());
