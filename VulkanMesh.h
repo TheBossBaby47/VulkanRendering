@@ -34,6 +34,8 @@ namespace NCL::Rendering {
 			return vertexInputState;
 		}
 
+		bool GetAttributeInformation(VertexAttribute v, const VulkanBuffer** outBuffer, uint32_t& outOffset, uint32_t& outRange) const;
+
 	protected:
 		vk::PipelineVertexInputStateCreateInfo				vertexInputState;
 		std::vector<vk::VertexInputAttributeDescription>	attributeDescriptions;

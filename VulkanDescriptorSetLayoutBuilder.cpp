@@ -14,42 +14,49 @@ License: MIT (see LICENSE file at the top of the source tree)
 using namespace NCL;
 using namespace Rendering;
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+vk::DescriptorSetLayoutBinding& VulkanDescriptorSetLayoutBuilder::AddDescriptors(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	vk::DescriptorSetLayoutBinding binding = vk::DescriptorSetLayoutBinding()
 		.setBinding((uint32_t)addedBindings.size())
 		.setDescriptorCount(count)
-		.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
 		.setStageFlags(inShaders);
 
 	addedBindings.emplace_back(binding);
 	addedFlags.emplace_back(bindingFlags);
+	return addedBindings[addedBindings.size() - 1];
+}
 
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eCombinedImageSampler);
+	return *this;
+}
+
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithSampledImages(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eSampledImage);
+	return *this;
+}
+
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithStoragemages(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageImage);
 	return *this;
 }
 
 VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	vk::DescriptorSetLayoutBinding binding = vk::DescriptorSetLayoutBinding()
-		.setBinding((uint32_t)addedBindings.size())
-		.setDescriptorCount(count)
-		.setDescriptorType(vk::DescriptorType::eUniformBuffer)
-		.setStageFlags(inShaders);
-
-	addedBindings.emplace_back(binding);
-	addedFlags.emplace_back(bindingFlags);
-
+	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eUniformBuffer);
 	return *this;
 }
 
 VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	vk::DescriptorSetLayoutBinding binding = vk::DescriptorSetLayoutBinding()
-		.setBinding((uint32_t)addedBindings.size())
-		.setDescriptorCount(count)
-		.setDescriptorType(vk::DescriptorType::eStorageBuffer)
-		.setStageFlags(inShaders);
+	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageBuffer);
+	return *this;
+}
 
-	addedBindings.emplace_back(binding);
-	addedFlags.emplace_back(bindingFlags);
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithDynamicUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eUniformBufferDynamic);
+	return *this;
+}
 
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WitDynamichStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageBufferDynamic);
 	return *this;
 }
 

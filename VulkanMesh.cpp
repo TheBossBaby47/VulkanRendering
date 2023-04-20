@@ -118,7 +118,7 @@ void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::Comman
 	assert(stagingBuffer.size >= (totalAllocationSize));
 
 	gpuBuffer = VulkanBufferBuilder(totalAllocationSize, debugName + " mesh Data")
-		.WithBufferUsage(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst)
+		.WithBufferUsage(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer)
 		.Build(sourceDevice, renderer->GetMemoryAllocator());
 
 	//need to now copy vertex data to device memory
@@ -195,4 +195,21 @@ size_t VulkanMesh::CalculateGPUAllocationSize() const {
 	size_t vertexDataSize = vSize * GetVertexCount();
 	size_t indexDataSize = sizeof(int) * GetIndexCount();
 	return vertexDataSize + indexDataSize;
+}
+
+bool VulkanMesh::GetAttributeInformation(VertexAttribute v, const VulkanBuffer** outBuffer, uint32_t& outOffset, uint32_t& outRange) const {
+	for (uint32_t i = 0; i < usedAttributes.size(); ++i) {
+		if (usedAttributes[i] != v) {
+			continue;
+		}
+
+		*outBuffer = &gpuBuffer;
+		outOffset = usedOffsets[i];
+
+		outRange = attributeSizes[v] * GetVertexCount();
+
+		return true;
+	}
+
+	return false;
 }

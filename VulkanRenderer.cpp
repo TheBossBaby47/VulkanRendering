@@ -353,11 +353,9 @@ vk::CommandBuffer	VulkanRenderer::BeginCmdBuffer(vk::CommandPool fromPool, const
 }
 
 void		VulkanRenderer::SubmitCmdBufferWait(vk::CommandBuffer  buffer, CommandBufferType type) {
-	vk::Fence fence = SubmitCmdBufferFence(buffer, type);
-
-	if (!fence) {
-		return;
-	}
+	vk::Fence fence = device.createFence({});
+		
+	SubmitCmdBufferFence(buffer, fence, type);
 
 	if (device.waitForFences(1, &fence, true, UINT64_MAX) != vk::Result::eSuccess) {
 		std::cout << __FUNCTION__ << " Device queue submission taking too long?\n";
@@ -381,25 +379,19 @@ void 	VulkanRenderer::SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferTy
 	queueTypes[(uint32_t)type].submit(submitInfo, {});
 }
 
-vk::Fence 	VulkanRenderer::SubmitCmdBufferFence(vk::CommandBuffer  buffer, CommandBufferType type) {
-	vk::Fence fence;
-	if (buffer) {
-		
+void VulkanRenderer::SubmitCmdBufferFence(vk::CommandBuffer  buffer, vk::Fence fence, CommandBufferType type) {
+	if (buffer) {		
 		buffer.end();
 	}
 	else {
 		std::cout << __FUNCTION__ << " Submitting invalid buffer?\n";
-		return fence;
+		return;
 	}
-	fence = device.createFence(vk::FenceCreateInfo());
-
 	vk::SubmitInfo submitInfo = vk::SubmitInfo();
 	submitInfo.setCommandBufferCount(1);
 	submitInfo.setPCommandBuffers(&buffer);
 
 	queueTypes[(uint32_t)type].submit(submitInfo, fence);
-
-	return fence;
 }
 
 bool VulkanRenderer::InitDeviceQueueIndices() {
@@ -661,7 +653,11 @@ void	VulkanRenderer::InitDefaultDescriptorPool() {
 	vk::DescriptorPoolSize poolSizes[] = {
 		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 128),
 		vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 128),
-		vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 128)
+		vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 128),
+		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, 128),
+		vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, 128),
+		vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, 128),
+		vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, 128)
 	};
 
 	vk::DescriptorPoolCreateInfo poolCreate;
@@ -690,11 +686,11 @@ void	VulkanRenderer::UpdateImageDescriptor(vk::DescriptorSet set, int bindingNum
 	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 }
 
-void VulkanRenderer::UpdateBufferDescriptor(vk::DescriptorSet set, const VulkanBuffer& data, int bindingSlot, vk::DescriptorType bufferType) {
+void VulkanRenderer::UpdateBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, const VulkanBuffer& data, size_t offset, size_t range) {
 	auto descriptorInfo = vk::DescriptorBufferInfo()
 		.setBuffer(data.buffer)
-		.setOffset(0)
-		.setRange(data.size);
+		.setOffset(offset)
+		.setRange(range == 0 ? data.size : range);
 
 	auto descriptorWrites = vk::WriteDescriptorSet()
 		.setDescriptorType(bufferType)

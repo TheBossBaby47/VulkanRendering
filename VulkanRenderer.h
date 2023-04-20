@@ -53,18 +53,14 @@ namespace NCL::Rendering {
 
 		vk::UniqueDescriptorSet BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool = {}, uint32_t variableDescriptorCount = 0);
 
-		void	UpdateBufferDescriptor(vk::DescriptorSet set, const VulkanBuffer& data, int bindingSlot, vk::DescriptorType bufferType);
+		void	UpdateBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, const VulkanBuffer& data, size_t offset = 0, size_t range = 0);
 		void	UpdateImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
-
-		//vk::CommandBuffer	BeginAsyncComputeCmdBuffer(const std::string& debugName = "");
-		//vk::CommandBuffer	BeginCopyCmdBuffer(const std::string& debugName = "");
-		//vk::CommandBuffer	BeginCmdBuffer(const std::string& debugName = "");
 
 		vk::CommandBuffer	BeginCmdBuffer(CommandBufferType type = CommandBufferType::Graphics, const std::string& debugName = "");
 
-		void				SubmitCmdBufferWait(vk::CommandBuffer buffer, CommandBufferType type = CommandBufferType::Graphics);
-		void				SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferType type = CommandBufferType::Graphics);
-		vk::Fence 			SubmitCmdBufferFence(vk::CommandBuffer  buffer, CommandBufferType type = CommandBufferType::Graphics);
+		void		SubmitCmdBufferWait(vk::CommandBuffer buffer, CommandBufferType type = CommandBufferType::Graphics);
+		void		SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferType type = CommandBufferType::Graphics);
+		void 		SubmitCmdBufferFence(vk::CommandBuffer  buffer, vk::Fence fence, CommandBufferType type = CommandBufferType::Graphics);
 
 		void		BeginDefaultRenderPass(vk::CommandBuffer  cmds);
 
@@ -142,6 +138,10 @@ namespace NCL::Rendering {
 
 		vk::PhysicalDevice GetPhysicalDevice() const {
 			return gpu;
+		}
+
+		const vk::PhysicalDeviceProperties& GetDeviceProperties() const {
+			return deviceProperties;
 		}
 
 	private: 
