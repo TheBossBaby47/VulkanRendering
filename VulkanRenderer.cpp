@@ -46,6 +46,7 @@ VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
 }
 
 VulkanRenderer::~VulkanRenderer() {
+	vkDeviceWaitIdle(device);
 	depthBuffer.reset();
 
 	for (auto& i : swapChainList) {
@@ -341,21 +342,18 @@ vk::CommandBuffer	VulkanRenderer::BeginCmdBuffer(vk::CommandPool fromPool, const
 
 	auto buffers = device.allocateCommandBuffers(bufferInfo); //Func returns a vector!
 
-	vk::CommandBuffer  newBuf = buffers[0];
-
-	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo();
-
 	if (!debugName.empty()) {
-		Vulkan::SetDebugName(device, vk::ObjectType::eCommandBuffer, Vulkan::GetVulkanHandle(newBuf), debugName);
+		Vulkan::SetDebugName(device, vk::ObjectType::eCommandBuffer, Vulkan::GetVulkanHandle(buffers[0]), debugName);
 	}
-	newBuf.begin(beginInfo);
-	return newBuf;
+	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo();
+	buffers[0].begin(beginInfo);
+	return buffers[0];
 }
 
 void		VulkanRenderer::SubmitCmdBufferWait(vk::CommandBuffer  buffer, CommandBufferType type) {
 	vk::Fence fence = device.createFence({});
 		
-	SubmitCmdBufferFence(buffer, fence, type);
+	SubmitCmdBuffer(buffer,type, fence);
 
 	if (device.waitForFences(1, &fence, true, UINT64_MAX) != vk::Result::eSuccess) {
 		std::cout << __FUNCTION__ << " Device queue submission taking too long?\n";
@@ -364,22 +362,7 @@ void		VulkanRenderer::SubmitCmdBufferWait(vk::CommandBuffer  buffer, CommandBuff
 	device.destroyFence(fence);
 }
 
-void 	VulkanRenderer::SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferType type) {
-	if (buffer) {	
-		buffer.end();
-	}
-	else {
-		std::cout << __FUNCTION__ << " Submitting invalid buffer?\n";
-		return;
-	}
-	vk::SubmitInfo submitInfo = vk::SubmitInfo();
-	submitInfo.setCommandBufferCount(1);
-	submitInfo.setPCommandBuffers(&buffer);
-
-	queueTypes[(uint32_t)type].submit(submitInfo, {});
-}
-
-void VulkanRenderer::SubmitCmdBufferFence(vk::CommandBuffer  buffer, vk::Fence fence, CommandBufferType type) {
+void	VulkanRenderer::SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferType type, vk::Fence fence, vk::Semaphore waitSemaphore, vk::Semaphore signalSempahore) {
 	if (buffer) {		
 		buffer.end();
 	}
@@ -391,7 +374,20 @@ void VulkanRenderer::SubmitCmdBufferFence(vk::CommandBuffer  buffer, vk::Fence f
 	submitInfo.setCommandBufferCount(1);
 	submitInfo.setPCommandBuffers(&buffer);
 
+	if (waitSemaphore) {
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &waitSemaphore;
+	}
+	if (signalSempahore) {
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &signalSempahore;
+	}
+
 	queueTypes[(uint32_t)type].submit(submitInfo, fence);
+}
+
+void VulkanRenderer::SubmitCmdBuffer(const vk::SubmitInfo& info, CommandBufferType type) {
+	queueTypes[(uint32_t)type].submit(info, {});
 }
 
 bool VulkanRenderer::InitDeviceQueueIndices() {
@@ -781,6 +777,8 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 	renderInfo.setRenderArea(defaultScreenRect);
 
 	cmds.beginRendering(renderInfo);
+	cmds.setViewport(0, 1, &defaultViewport);
+	cmds.setScissor(0, 1, &defaultScissor);
 }
 
 void	VulkanRenderer::EndRendering(vk::CommandBuffer  cmds) {

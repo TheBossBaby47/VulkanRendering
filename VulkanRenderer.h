@@ -58,9 +58,10 @@ namespace NCL::Rendering {
 
 		vk::CommandBuffer	BeginCmdBuffer(CommandBufferType type = CommandBufferType::Graphics, const std::string& debugName = "");
 
-		void		SubmitCmdBufferWait(vk::CommandBuffer buffer, CommandBufferType type = CommandBufferType::Graphics);
-		void		SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferType type = CommandBufferType::Graphics);
-		void 		SubmitCmdBufferFence(vk::CommandBuffer  buffer, vk::Fence fence, CommandBufferType type = CommandBufferType::Graphics);
+		void		SubmitCmdBufferWait(vk::CommandBuffer buffer, CommandBufferType type);
+
+		void		SubmitCmdBuffer(const vk::SubmitInfo& info, CommandBufferType type);
+		void		SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferType type = CommandBufferType::Graphics, vk::Fence fence = {}, vk::Semaphore waitSemaphore = {}, vk::Semaphore signalSempahore = {});
 
 		void		BeginDefaultRenderPass(vk::CommandBuffer  cmds);
 
@@ -75,29 +76,21 @@ namespace NCL::Rendering {
 			return memoryAllocator;
 		}
 
-		vk::Queue GetQueue(CommandBufferType type) {
+		vk::Queue GetQueue(CommandBufferType type) const {
 			return queueTypes[(uint32_t)type];
 		}
 
-		vk::CommandPool GetCommandPool(CommandBufferType type) {
+		vk::CommandPool GetCommandPool(CommandBufferType type) const {
 			return commandPools[(uint32_t)type];
+		}
+
+		vk::ImageView GetCurrentSwapView() const {
+			return swapChainList[currentSwap]->view;
 		}
 
 	protected:		
 		vk::CommandBuffer	BeginCmdBuffer(vk::CommandPool fromPool, const std::string& debugName);
-
-		struct SwapChain {
-			vk::Image			image;
-			vk::ImageView		view;
-			vk::CommandBuffer	frameCmds;
-		};
-		std::vector<SwapChain*> swapChainList;	
-		uint32_t				currentSwap		= 0;
-		vk::Framebuffer* frameBuffers			= nullptr;
-
-		vk::PipelineCache		pipelineCache;
-		vk::Device				device;		//Device handle	
-		
+	
 		vk::ClearValue			defaultClearValues[2];
 		vk::Viewport			defaultViewport;
 		vk::Rect2D				defaultScissor;	
@@ -132,8 +125,6 @@ namespace NCL::Rendering {
 
 		UniqueVulkanTexture depthBuffer;
 
-		vk::SwapchainKHR	swapChain;
-		VmaAllocator			memoryAllocator;
 		VmaAllocatorCreateInfo	allocatorInfo;
 
 		vk::PhysicalDevice GetPhysicalDevice() const {
@@ -173,5 +164,20 @@ namespace NCL::Rendering {
 		uint32_t			computeQueueIndex		= 0;
 		uint32_t			copyQueueIndex			= 0;
 		uint32_t			gfxPresentIndex			= 0;
+
+		vk::PipelineCache		pipelineCache;
+		vk::Device				device;		//Device handle	
+
+		struct SwapChain {
+			vk::Image			image;
+			vk::ImageView		view;
+			vk::CommandBuffer	frameCmds;
+		};
+		std::vector<SwapChain*> swapChainList;
+		uint32_t				currentSwap = 0;
+		vk::Framebuffer* frameBuffers = nullptr;
+
+		vk::SwapchainKHR	swapChain;
+		VmaAllocator		memoryAllocator;
 	};
 }
