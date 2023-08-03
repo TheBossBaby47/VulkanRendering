@@ -11,8 +11,12 @@ License: MIT (see LICENSE file at the top of the source tree)
 using namespace NCL;
 using namespace Rendering;
 
-vk::DispatchLoaderDynamic* NCL::Rendering::Vulkan::dispatcher = nullptr;
+//vk::DispatchLoaderDynamic* NCL::Rendering::Vulkan::dispatcher = nullptr;
 std::map<vk::Device, vk::DescriptorSetLayout > NCL::Rendering::Vulkan::nullDescriptors;
+
+vk::DynamicLoader NCL::Rendering::Vulkan::dynamicLoader;
+
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 vk::ClearColorValue Vulkan::ClearColour(float r, float g, float b, float a) {
 	return vk::ClearColorValue(std::array<float, 4>{r, g, b, a});
@@ -23,7 +27,7 @@ void Vulkan::SetDebugName(vk::Device device, vk::ObjectType t, uint64_t handle, 
 		vk::DebugUtilsObjectNameInfoEXT()
 		.setObjectType(t)
 		.setObjectHandle(handle)
-		.setPObjectName(debugName.c_str()), *Vulkan::dispatcher
+		.setPObjectName(debugName.c_str())/*, *Vulkan::dispatcher*/
 	);
 };
 
@@ -31,11 +35,11 @@ void Vulkan::BeginDebugArea(vk::CommandBuffer b, const std::string& name) {
 	vk::DebugUtilsLabelEXT labelInfo;
 	labelInfo.pLabelName = name.c_str();
 
-	b.beginDebugUtilsLabelEXT(labelInfo, *Vulkan::dispatcher);
+	b.beginDebugUtilsLabelEXT(labelInfo/*, *Vulkan::dispatcher*/);
 }
 
 void Vulkan::EndDebugArea(vk::CommandBuffer b) {
-	b.endDebugUtilsLabelEXT(*Vulkan::dispatcher);
+	b.endDebugUtilsLabelEXT(/**Vulkan::dispatcher*/);
 }
 
 void Vulkan::SetNullDescriptor(vk::Device device, vk::DescriptorSetLayout layout) {

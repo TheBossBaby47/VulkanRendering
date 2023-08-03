@@ -39,7 +39,9 @@ namespace NCL::Rendering {
 
 		bool MessageAssert(bool condition, const char* msg);
 
-		extern vk::DispatchLoaderDynamic* dispatcher;
+		extern vk::DynamicLoader dynamicLoader;
+		//extern vk::DispatchLoaderDynamic*	dispatcher;
+		//extern vk::DispatchLoaderStatic*	staticDispatcher;
 		void SetNullDescriptor(vk::Device device, vk::DescriptorSetLayout layout);
 		extern std::map<vk::Device, vk::DescriptorSetLayout > nullDescriptors;
 	}

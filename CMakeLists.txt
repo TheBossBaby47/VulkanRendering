@@ -12,6 +12,7 @@ set(Header_Files
     "VulkanDynamicRenderBuilder.h"
     "VulkanMesh.h"
     "VulkanPipeline.h"
+	"VulkanPipelineBuilderBase.h"
     "VulkanPipelineBuilder.h"
     "VulkanRenderer.h"
     "VulkanRenderPassBuilder.h"
@@ -73,12 +74,20 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
     <Vector3.h>
     <Vector4.h>
 
+    <Vector2i.h>
+    <Vector3i.h>
+    <Vector4i.h>
+
     <Quaternion.h>
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION_RELEASE "TRUE"
 )
+
+add_compile_definitions(VULKAN_HPP_DISPATCH_LOADER_DYNAMIC)
+add_compile_definitions(VK_NO_PROTOTYPES)
+
 
 ################################################################################
 # Compile and link options
@@ -97,7 +106,3 @@ target_include_directories (${PROJECT_NAME}
 ################################################################################
 target_link_libraries(${PROJECT_NAME} PUBLIC "${ADDITIONAL_LIBRARY_DEPENDENCIES}")
 target_link_libraries(${PROJECT_NAME} PRIVATE ${Vulkan_LIBRARIES})
-
-if(MSVC)
-target_link_libraries(${PROJECT_NAME} PRIVATE "$ENV{VULKAN_SDK}/lib/VkLayer_utils.lib")
-endif()

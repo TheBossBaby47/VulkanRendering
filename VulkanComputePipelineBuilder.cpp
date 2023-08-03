@@ -12,32 +12,11 @@ License: MIT (see LICENSE file at the top of the source tree)
 using namespace NCL;
 using namespace Rendering;
 
-VulkanComputePipelineBuilder::VulkanComputePipelineBuilder(const std::string& name) {
-	debugName = name;
-}
-
-VulkanComputePipelineBuilder& VulkanComputePipelineBuilder::WithPushConstant(vk::ShaderStageFlags flags, uint32_t offset, uint32_t size) {
-	allPushConstants.emplace_back(vk::PushConstantRange(flags, offset, size));
-	return *this;
-}
-
-VulkanComputePipelineBuilder& VulkanComputePipelineBuilder::WithDescriptorSetLayout(uint32_t slot, vk::DescriptorSetLayout layout) {
-	assert(slot < 32);
-	while (allLayouts.size() <= slot) {
-		allLayouts.push_back(vk::DescriptorSetLayout());
-	}
-	allLayouts[slot] = layout;
-	return *this;
+VulkanComputePipelineBuilder::VulkanComputePipelineBuilder(const std::string& name) : VulkanPipelineBuilderBase(name){
 }
 
 VulkanComputePipelineBuilder& VulkanComputePipelineBuilder::WithShader(UniqueVulkanCompute& compute) {
 	compute->FillShaderStageCreateInfo(pipelineCreate);
-	return *this;
-}
-
-VulkanComputePipelineBuilder& VulkanComputePipelineBuilder::WithLayout(vk::PipelineLayout layout) {
-	this->layout = layout;
-	pipelineCreate.setLayout(layout);
 	return *this;
 }
 

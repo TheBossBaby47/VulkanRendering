@@ -36,12 +36,12 @@ void VulkanShader::ReloadShader() {
 
 }
 
-void VulkanShader::AddBinaryShaderModule(const string& fromFile, ShaderStages stage, vk::Device device, const string& entryPoint) {
+void VulkanShader::AddBinaryShaderModule(const std::string& fromFile, ShaderStages stage, vk::Device device, const std::string& entryPoint) {
 	char* data;
 	size_t dataSize = 0;
 	Assets::ReadBinaryFile(Assets::SHADERDIR + "VK/" + fromFile, &data, dataSize);
 
-	if (data) {
+	if (dataSize > 0) {
 		shaderModules[(int)stage] = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo(vk::ShaderModuleCreateFlags(), dataSize, (uint32_t*)data));
 	}
 	else {

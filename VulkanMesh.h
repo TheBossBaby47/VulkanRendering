@@ -6,11 +6,11 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "../NCLCoreClasses/MeshGeometry.h"
+#include "../NCLCoreClasses/Mesh.h"
 #include "VulkanBuffers.h"
 
 namespace NCL::Rendering {
-	class VulkanMesh : public MeshGeometry {
+	class VulkanMesh : public Mesh {
 	public:
 		friend class VulkanRenderer;
 		VulkanMesh();
@@ -24,17 +24,24 @@ namespace NCL::Rendering {
 		void BindToCommandBuffer(vk::CommandBuffer  buffer) const;
 
 		void UploadToGPU(RendererBase* renderer) override;
-		void UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::CommandBuffer buffer, VulkanBuffer& stagingBuffer);
+
+		void UploadToGPU(RendererBase* renderer, vk::BufferUsageFlagBits extraUses);
+		void UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::CommandBuffer buffer, VulkanBuffer& stagingBuffer, vk::BufferUsageFlagBits extraUses = {});
 
 		uint32_t	GetAttributeMask() const;
 		size_t		CalculateGPUAllocationSize() const;
 		vk::PrimitiveTopology GetVulkanTopology() const;
 
+		size_t GetVertexStride() const {
+			return vertexStride;
+		}
+
 		operator const vk::PipelineVertexInputStateCreateInfo&() const {
 			return vertexInputState;
 		}
 
-		bool GetAttributeInformation(VertexAttribute v, const VulkanBuffer** outBuffer, uint32_t& outOffset, uint32_t& outRange) const;
+		bool GetIndexInformation(vk::Buffer& outBuffer, uint32_t& outOffset, uint32_t& outRange, vk::IndexType& outType);
+		bool GetAttributeInformation(VertexAttribute v, vk::Buffer& outBuffer, uint32_t& outOffset, uint32_t& outRange, vk::Format& outFormat) const;
 
 	protected:
 		vk::PipelineVertexInputStateCreateInfo				vertexInputState;
@@ -42,12 +49,18 @@ namespace NCL::Rendering {
 		std::vector<vk::VertexInputBindingDescription>		attributeBindings;		
 	
 		VulkanBuffer gpuBuffer;
-		size_t indexOffset = 0;
-	
+		size_t vertexOffset = 0;
+		size_t indexOffset	= 0;
+
+		size_t vertexStride = 0;
+
 		uint32_t attributeMask = 0;
+
+		vk::IndexType indexType = vk::IndexType::eNoneKHR;
 
 		vector<vk::Buffer>			usedBuffers;
 		vector<vk::DeviceSize>		usedOffsets;
+		vector<vk::Format>			usedFormats;
 		vector< VertexAttribute >	usedAttributes;
 	};
 }

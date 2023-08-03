@@ -6,10 +6,10 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "../NCLCoreClasses/ShaderBase.h"
+#include "../NCLCoreClasses/Shader.h"
 
 namespace NCL::Rendering {
-	class VulkanShader : public ShaderBase {
+	class VulkanShader : public Shader {
 	public:
 		friend class VulkanRenderer;
 		friend class VulkanShaderBuilder;
@@ -20,7 +20,7 @@ namespace NCL::Rendering {
 		~VulkanShader();
 
 	protected:
-		void AddBinaryShaderModule(const string& fromFile, ShaderStages stage, vk::Device device, const string& entryPoint = "main");
+		void AddBinaryShaderModule(const std::string& fromFile, ShaderStages stage, vk::Device device, const std::string& entryPoint = "main");
 
 		void Init();
 
@@ -28,7 +28,7 @@ namespace NCL::Rendering {
 		VulkanShader();
 
 		vk::UniqueShaderModule shaderModules[(int)ShaderStages::MAXSIZE];
-		string entryPoints[(int)ShaderStages::MAXSIZE];
+		std::string entryPoints[(int)ShaderStages::MAXSIZE];
 
 		uint32_t stageCount;
 		vk::PipelineShaderStageCreateInfo* infos;

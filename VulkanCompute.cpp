@@ -27,18 +27,6 @@ VulkanCompute::VulkanCompute(vk::Device device, const std::string& filename) : l
 	info.pName	= "main";
 }
 
-uint32_t VulkanCompute::GetThreadXCount() const {
-	return localThreadSize[0];
-}
-
-uint32_t VulkanCompute::GetThreadYCount() const {
-	return localThreadSize[1];
-}
-
-uint32_t VulkanCompute::GetThreadZCount() const {
-	return localThreadSize[2];
-}
-
 void	VulkanCompute::FillShaderStageCreateInfo(vk::ComputePipelineCreateInfo& pipeInfo) const {
 	pipeInfo.setStage(info);
 }

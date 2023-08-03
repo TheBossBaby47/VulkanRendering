@@ -35,7 +35,7 @@ VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithSampledI
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithStoragemages(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithStorageImages(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageImage);
 	return *this;
 }
@@ -55,10 +55,21 @@ VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithDynamicU
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WitDynamichStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithDynamicStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageBufferDynamic);
 	return *this;
 }
+
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithAccelStructures(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eAccelerationStructureKHR);
+	return *this;
+}
+
+VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithDescriptors(vk::DescriptorType type, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(type);
+	return *this;
+}
+
 
 VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithCreationFlags(vk::DescriptorSetLayoutCreateFlags flags) {
 	createInfo.flags |= flags;

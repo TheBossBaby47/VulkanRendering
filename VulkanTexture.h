@@ -6,13 +6,13 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "../NCLCoreClasses/TextureBase.h"
+#include "../NCLCoreClasses/Texture.h"
 #include "SmartTypes.h"
 
 namespace NCL::Rendering {
 	class VulkanRenderer;
 
-	class VulkanTexture : public TextureBase	{
+	class VulkanTexture : public Texture	{
 		friend class VulkanRenderer;
 	public:
 		~VulkanTexture();
@@ -26,7 +26,13 @@ namespace NCL::Rendering {
 
 		static UniqueVulkanTexture TextureFromFile(VulkanRenderer* renderer, const std::string& name);
 		static UniqueVulkanTexture CreateDepthTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName = "DefaultDepth", bool hasStencil = true, bool mips = false);
-		static UniqueVulkanTexture CreateColourTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName = "DefaultColour", bool isFloat = false, bool mips = false);
+		static UniqueVulkanTexture CreateColourTexture(VulkanRenderer* renderer, 
+			uint32_t width, uint32_t height, 
+			const std::string& debugName = "DefaultColour", 
+			vk::Format format = vk::Format::eB8G8R8A8Unorm, 
+			vk::ImageUsageFlags flags = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled, 
+			vk::ImageLayout		 initialLayout = vk::ImageLayout::eColorAttachmentOptimal,
+			bool mips = false);
 
 		vk::ImageView GetDefaultView() const {
 			return *defaultView;
@@ -50,6 +56,8 @@ namespace NCL::Rendering {
 		operator vk::Format() const {
 			return format;
 		}
+
+		void FillImageStorageView(vk::ImageView& view, vk::Device device);
 
 	protected:
 		VulkanTexture();

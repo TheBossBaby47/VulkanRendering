@@ -25,6 +25,9 @@ using namespace Rendering;
 vk::PhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
 
 VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
+	PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = Vulkan::dynamicLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
+
 	allocatorInfo		= {};
 
 	deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -46,7 +49,8 @@ VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
 }
 
 VulkanRenderer::~VulkanRenderer() {
-	vkDeviceWaitIdle(device);
+	device.waitIdle();
+	//vkDeviceWaitIdle(device);
 	depthBuffer.reset();
 
 	for (auto& i : swapChainList) {
@@ -68,7 +72,7 @@ VulkanRenderer::~VulkanRenderer() {
 	device.destroyPipelineCache(pipelineCache);
 	device.destroy(); //Destroy everything except instance before this gets destroyed!
 
-	delete Vulkan::dispatcher;
+	//delete Vulkan::dispatcher;
 
 	instance.destroySurfaceKHR(surface);
 	instance.destroy();
@@ -109,7 +113,14 @@ bool VulkanRenderer::InitInstance() {
 		.setPpEnabledLayerNames(instanceLayers.data());
 
 	instance = vk::createInstance(instanceInfo);
-	Vulkan::dispatcher = new vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr); //Instance dispatcher
+	//Vulkan::dispatcher = new vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr); //Instance dispatcher
+	//VULKAN_HPP_DISPATCH_LOADER_DYNAMIC
+
+
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
+
+	//Vulkan::staticDispatcher = new vk::DispatchLoaderStatic(instance, vkGetInstanceProcAddr); //Instance dispatcher 
+
 	return true;
 }
 
@@ -194,8 +205,10 @@ bool VulkanRenderer::InitGPUDevice() {
 	deviceMemoryProperties = gpu.getMemoryProperties();
 	deviceProperties = gpu.getProperties();
 
-	delete Vulkan::dispatcher;
-	Vulkan::dispatcher = new vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr , device); //DEVICE dispatcher
+	//delete Vulkan::dispatcher;
+	//Vulkan::dispatcher = new vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr , device); //DEVICE dispatcher
+
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
 	return true;
 }
 
@@ -327,9 +340,21 @@ void	VulkanRenderer::InitCommandPools() {
 }
 
 void	VulkanRenderer::InitMemoryAllocator() {
+	//::vk::defaultDispatchLoaderDynamic.vkGetDeviceProcAddr;
+	//device.createCommandPool()
+
+	//::vk::DispatchLoaderDynamic::vkGetDeviceProcAddr;
+	VmaVulkanFunctions funcs = {};
+	funcs.vkGetInstanceProcAddr = ::vk::defaultDispatchLoaderDynamic.vkGetInstanceProcAddr;
+	funcs.vkGetDeviceProcAddr   = ::vk::defaultDispatchLoaderDynamic.vkGetDeviceProcAddr;
+
+
 	allocatorInfo.physicalDevice = gpu;
 	allocatorInfo.device	= device;
 	allocatorInfo.instance	= instance;
+
+
+	allocatorInfo.pVulkanFunctions = &funcs;
 	vmaCreateAllocator(&allocatorInfo, &memoryAllocator);
 }
 
@@ -370,13 +395,17 @@ void	VulkanRenderer::SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferTyp
 		std::cout << __FUNCTION__ << " Submitting invalid buffer?\n";
 		return;
 	}
+
 	vk::SubmitInfo submitInfo = vk::SubmitInfo();
 	submitInfo.setCommandBufferCount(1);
 	submitInfo.setPCommandBuffers(&buffer);
 
+	vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eTopOfPipe;
+
 	if (waitSemaphore) {
 		submitInfo.waitSemaphoreCount = 1;
 		submitInfo.pWaitSemaphores = &waitSemaphore;
+		submitInfo.pWaitDstStageMask = &waitStage;
 	}
 	if (signalSempahore) {
 		submitInfo.signalSemaphoreCount = 1;
@@ -432,17 +461,6 @@ bool VulkanRenderer::InitDeviceQueueIndices() {
 		std::cout << __FUNCTION__ << " Device supports async copy!\n";
 	}
 
-
-	//if (gfxPresentIndex == -1) {
-	//	for (unsigned int i = 0; i < deviceQueueProps.size(); ++i) {
-	//		supportsPresent = gpu.getSurfaceSupportKHR(i, surface);
-	//		if (supportsPresent) {
-	//			gfxPresentIndex = i;
-	//			break;
-	//		}
-	//	}
-	//}
-
 	if (gfxQueueIndex == -1		|| 
 		gfxPresentIndex == -1   || 
 		computeQueueIndex == -1 ||
@@ -454,29 +472,29 @@ bool VulkanRenderer::InitDeviceQueueIndices() {
 }
 
 void VulkanRenderer::OnWindowResize(int width, int height) {
-	if (!hostWindow.IsMinimised() && width == windowWidth && height == windowHeight) {
+	if (!hostWindow.IsMinimised() && width == windowSize.x && height == windowSize.y) {
 		return;
 	}
 	if (width == 0 && height == 0) {
 		return;
 	}
-	windowWidth		= width;
-	windowHeight	= height;
+	windowSize = { width, height };
 
-	defaultScreenRect = vk::Rect2D({ 0,0 }, { (uint32_t)windowWidth, (uint32_t)windowHeight });
+	defaultScreenRect = vk::Rect2D({ 0,0 }, { (uint32_t)windowSize.x, (uint32_t)windowSize.y });
 
-	defaultViewport = vk::Viewport(0.0f, (float)windowHeight, (float)windowWidth, -(float)windowHeight, 0.0f, 1.0f);
-	defaultScissor	= vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(windowWidth, windowHeight));
+	defaultViewport = vk::Viewport(0.0f, (float)windowSize.y, (float)windowSize.x, -(float)windowSize.y, 0.0f, 1.0f);
+	defaultScissor	= vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(windowSize.x, windowSize.y));
 
 	defaultClearValues[0] = vk::ClearValue(vk::ClearColorValue(std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.0f}));
 	defaultClearValues[1] = vk::ClearValue(vk::ClearDepthStencilValue(1.0f, 0));
 
 	vk::CommandBuffer cmds = BeginCmdBuffer(CommandBufferType::Graphics);
 
-	std::cout << __FUNCTION__ << " New dimensions: " << windowWidth << " , " << windowHeight << "\n";
-	vkDeviceWaitIdle(device);
+	std::cout << __FUNCTION__ << " New dimensions: " << windowSize.x << " , " << windowSize.y << "\n";
+	//vkDeviceWaitIdle(device);
 
-	//delete depthBuffer;
+	device.waitIdle();
+
 	depthBuffer = VulkanTexture::CreateDepthTexture(this,(int)hostWindow.GetScreenSize().x, (int)hostWindow.GetScreenSize().y);
 	
 	numFrameBuffers = InitBufferChain(cmds);
@@ -484,7 +502,8 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 	InitDefaultRenderPass();
 	CreateDefaultFrameBuffers();
 
-	vkDeviceWaitIdle(device);
+	//vkDeviceWaitIdle(device);
+	device.waitIdle();
 
 	vk::Semaphore	presentSempaphore = device.createSemaphore(vk::SemaphoreCreateInfo());
 	vk::Fence		fence = device.createFence(vk::FenceCreateInfo());
@@ -665,7 +684,7 @@ void	VulkanRenderer::InitDefaultDescriptorPool() {
 	defaultDescriptorPool = device.createDescriptorPool(poolCreate);
 }
 
-void	VulkanRenderer::UpdateImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
+void	VulkanRenderer::WriteImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
 	auto imageInfo = vk::DescriptorImageInfo()
 		.setSampler(sampler)
 		.setImageView(view)
@@ -682,11 +701,11 @@ void	VulkanRenderer::UpdateImageDescriptor(vk::DescriptorSet set, int bindingNum
 	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 }
 
-void VulkanRenderer::UpdateBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, const VulkanBuffer& data, size_t offset, size_t range) {
+void	VulkanRenderer::WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset, size_t range) {
 	auto descriptorInfo = vk::DescriptorBufferInfo()
-		.setBuffer(data.buffer)
+		.setBuffer(buff)
 		.setOffset(offset)
-		.setRange(range == 0 ? data.size : range);
+		.setRange(range);
 
 	auto descriptorWrites = vk::WriteDescriptorSet()
 		.setDescriptorType(bufferType)
@@ -697,6 +716,43 @@ void VulkanRenderer::UpdateBufferDescriptor(vk::DescriptorSet set, int bindingSl
 
 	device.updateDescriptorSets(1, &descriptorWrites, 0, nullptr);
 }
+
+void VulkanRenderer::WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, const VulkanBuffer& data, size_t offset, size_t range) {
+	WriteBufferDescriptor(set, bindingSlot, bufferType, data.buffer, offset, range == 0 ? data.size : range);
+}
+
+void	VulkanRenderer::WriteTLASDescriptor(vk::DescriptorSet set, int bindingSlot, vk::AccelerationStructureKHR tlas) {
+	auto descriptorInfo = vk::WriteDescriptorSetAccelerationStructureKHR()
+		.setAccelerationStructureCount(1)
+		.setAccelerationStructures(tlas);
+
+	auto descriptorWrites = vk::WriteDescriptorSet()
+		.setDescriptorType(vk::DescriptorType::eAccelerationStructureKHR)
+		.setDstSet(set)
+		.setDstBinding(bindingSlot)
+		.setDescriptorCount(1)
+		.setPNext(&descriptorInfo);
+
+	device.updateDescriptorSets(1, &descriptorWrites, 0, nullptr);
+}
+
+void	VulkanRenderer::WriteStorageImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
+	auto imageInfo = vk::DescriptorImageInfo()
+		.setSampler(sampler)
+		.setImageView(view)
+		.setImageLayout(layout);
+
+	auto descriptorWrite = vk::WriteDescriptorSet()
+		.setDescriptorType(vk::DescriptorType::eStorageImage)
+		.setDstSet(set)
+		.setDstBinding(bindingNum)
+		.setDstArrayElement(subIndex)
+		.setDescriptorCount(1)
+		.setPImageInfo(&imageInfo);
+
+	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+}
+
 
 vk::UniqueDescriptorSet VulkanRenderer::BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool, uint32_t variableDescriptorCount) {
 	if (!pool) {
@@ -783,4 +839,8 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 
 void	VulkanRenderer::EndRendering(vk::CommandBuffer  cmds) {
 	cmds.endRendering();
+}
+
+vk::Format VulkanRenderer::GetDepthFormat() const {
+	return depthBuffer->GetFormat();
 }

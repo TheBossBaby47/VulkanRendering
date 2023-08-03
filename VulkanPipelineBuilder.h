@@ -6,6 +6,7 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
+#include "VulkanPipelineBuilderBase.h"
 #include "VulkanPipeline.h"
 
 namespace NCL::Rendering {
@@ -15,7 +16,7 @@ namespace NCL::Rendering {
 
 	struct VulkanVertexSpecification;
 
-	class VulkanPipelineBuilder	{
+	class VulkanPipelineBuilder	: public VulkanPipelineBuilderBase<VulkanPipelineBuilder, vk::GraphicsPipelineCreateInfo> {
 	public:
 		VulkanPipelineBuilder(const std::string& debugName = "");
 		~VulkanPipelineBuilder() {}
@@ -34,24 +35,15 @@ namespace NCL::Rendering {
 
 		VulkanPipelineBuilder& WithShader(const UniqueVulkanShader& shader);
 
-		VulkanPipelineBuilder& WithLayout(vk::PipelineLayout layout);
-
-		VulkanPipelineBuilder& WithPushConstant(vk::ShaderStageFlags flags, uint32_t offset, uint32_t size);
-
-		VulkanPipelineBuilder& WithDescriptorSetLayout(uint32_t slot, vk::DescriptorSetLayout layout);
-
 		VulkanPipelineBuilder& WithPass(vk::RenderPass& renderPass);
 
 		VulkanPipelineBuilder& WithDepthStencilFormat(vk::Format combinedFormat);
 		VulkanPipelineBuilder& WithDepthFormat(vk::Format depthFormat);
 		VulkanPipelineBuilder& WithColourFormats(const std::vector<vk::Format>& formats);
 
-		VulkanPipelineBuilder& WithDescriptorBuffers();
-
 		VulkanPipeline	Build(vk::Device device, vk::PipelineCache cache = {});
 
 	protected:
-		vk::GraphicsPipelineCreateInfo				pipelineCreate;
 		vk::PipelineCacheCreateInfo					cacheCreate;
 		vk::PipelineInputAssemblyStateCreateInfo	inputAsmCreate;
 		vk::PipelineRasterizationStateCreateInfo	rasterCreate;
@@ -62,19 +54,13 @@ namespace NCL::Rendering {
 		vk::PipelineDynamicStateCreateInfo			dynamicCreate;
 		vk::PipelineVertexInputStateCreateInfo		vertexCreate;
 		vk::PipelineTessellationStateCreateInfo		tessellationCreate;
-		vk::PipelineLayout layout;
 
 		std::vector< vk::PipelineColorBlendAttachmentState>			blendAttachStates;
 
 		vk::DynamicState dynamicStateEnables[2];
 
-		std::vector< vk::DescriptorSetLayout> allLayouts;
-		std::vector< vk::PushConstantRange> allPushConstants;
-
 		std::vector<vk::Format> allColourRenderingFormats;
 		vk::Format depthRenderingFormat;
 		vk::Format stencilRenderingFormat;
-
-		std::string debugName;
 	};
 }

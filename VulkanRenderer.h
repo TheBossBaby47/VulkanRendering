@@ -53,8 +53,15 @@ namespace NCL::Rendering {
 
 		vk::UniqueDescriptorSet BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool = {}, uint32_t variableDescriptorCount = 0);
 
-		void	UpdateBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, const VulkanBuffer& data, size_t offset = 0, size_t range = 0);
-		void	UpdateImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
+
+		void	WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset, size_t range);
+
+		void	WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, const VulkanBuffer& data, size_t offset = 0, size_t range = 0);
+		void	WriteImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
+		
+		void	WriteStorageImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
+		void	WriteTLASDescriptor(vk::DescriptorSet set, int bindingSlot, vk::AccelerationStructureKHR tlas);
+
 
 		vk::CommandBuffer	BeginCmdBuffer(CommandBufferType type = CommandBufferType::Graphics, const std::string& debugName = "");
 
@@ -88,6 +95,20 @@ namespace NCL::Rendering {
 			return swapChainList[currentSwap]->view;
 		}
 
+		vk::PhysicalDevice GetPhysicalDevice() const {
+			return gpu;
+		}
+
+		const vk::PhysicalDeviceProperties& GetDeviceProperties() const {
+			return deviceProperties;
+		}
+
+		vk::Format GetSurfaceFormat() const {
+			return surfaceFormat;
+		}
+
+		vk::Format GetDepthFormat() const;
+
 	protected:		
 		vk::CommandBuffer	BeginCmdBuffer(vk::CommandPool fromPool, const std::string& debugName);
 	
@@ -119,21 +140,9 @@ namespace NCL::Rendering {
 		bool				autoTransitionFrameBuffer = true;
 		bool				autoBeginDynamicRendering = true;
 
-		vk::SurfaceKHR		surface;
-		vk::Format			surfaceFormat;
-		vk::ColorSpaceKHR	surfaceSpace;
-
 		UniqueVulkanTexture depthBuffer;
 
 		VmaAllocatorCreateInfo	allocatorInfo;
-
-		vk::PhysicalDevice GetPhysicalDevice() const {
-			return gpu;
-		}
-
-		const vk::PhysicalDeviceProperties& GetDeviceProperties() const {
-			return deviceProperties;
-		}
 
 	private: 
 		void	InitCommandPools();
@@ -149,14 +158,18 @@ namespace NCL::Rendering {
 
 		virtual void SetupDevice(vk::PhysicalDeviceFeatures2& deviceFeatures) {}
 
-		uint32_t			numFrameBuffers = 0;
-
 		vk::Instance		instance;	//API Instance
 		vk::PhysicalDevice	gpu;		//GPU in use
 
 		vk::PhysicalDeviceProperties		deviceProperties;
 		vk::PhysicalDeviceMemoryProperties	deviceMemoryProperties;
 
+		vk::PipelineCache		pipelineCache;
+		vk::Device				device;		//Device handle	
+
+		vk::SurfaceKHR		surface;
+		vk::Format			surfaceFormat;
+		vk::ColorSpaceKHR	surfaceSpace;
 
 		vk::Queue			presentQueue;
 
@@ -164,9 +177,7 @@ namespace NCL::Rendering {
 		uint32_t			computeQueueIndex		= 0;
 		uint32_t			copyQueueIndex			= 0;
 		uint32_t			gfxPresentIndex			= 0;
-
-		vk::PipelineCache		pipelineCache;
-		vk::Device				device;		//Device handle	
+		uint32_t			numFrameBuffers			= 0;
 
 		struct SwapChain {
 			vk::Image			image;

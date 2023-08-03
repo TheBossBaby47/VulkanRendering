@@ -37,15 +37,20 @@ size_t attributeSizes[] = {
 VulkanMesh::VulkanMesh()	{
 }
 
-VulkanMesh::VulkanMesh(const std::string& filename) : MeshGeometry(filename) {
+VulkanMesh::VulkanMesh(const std::string& filename) : Mesh(filename) {
 	debugName = filename;
 }
 
 VulkanMesh::~VulkanMesh()	{
 }
 
-void VulkanMesh::UploadToGPU(RendererBase* r)  {
+void VulkanMesh::UploadToGPU(RendererBase* r, vk::BufferUsageFlagBits extraUses) {
 	assert(ValidateMeshData());
+
+	//TODO: Do we care about supporting 16bit indices?
+	if (GetIndexCount() > 0) {
+		indexType = vk::IndexType::eUint32;
+	}
 
 	VulkanRenderer* renderer = (VulkanRenderer*)r;
 
@@ -60,7 +65,7 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 		.WithHostVisibility()
 		.Build(renderer->GetDevice(), renderer->GetMemoryAllocator());
 
-	UploadToGPU(renderer, gfxQueue, cmdBuffer, stagingBuffer);
+	UploadToGPU(renderer, gfxQueue, cmdBuffer, stagingBuffer, extraUses);
 
 	renderer->SubmitCmdBufferWait(cmdBuffer, CommandBufferType::Graphics);
 	//The staging buffer is auto destroyed, but that's fine!
@@ -68,7 +73,11 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 	//the staging buffer has been read from at this point
 }
 
-void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::CommandBuffer cmdBuffer, VulkanBuffer& stagingBuffer) {
+void VulkanMesh::UploadToGPU(RendererBase* r)  {
+	UploadToGPU(r, {});
+}
+
+void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::CommandBuffer cmdBuffer, VulkanBuffer& stagingBuffer, vk::BufferUsageFlagBits extraUses) {
 	usedAttributes.clear();
 	attributeBindings.clear();
 	attributeDescriptions.clear();
@@ -81,7 +90,8 @@ void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::Comman
 
 	auto atrributeFunc = [&](VertexAttribute attribute, size_t count, const char* data) {
 		if (count > 0) {
-			usedAttributes.emplace_back(attribute);
+			usedAttributes.push_back(attribute);
+			usedFormats.push_back(attributeFormats[attribute]);
 			attributeDataSources.push_back(data);
 			vSize += attributeSizes[attribute];
 		}
@@ -118,7 +128,11 @@ void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::Comman
 	assert(stagingBuffer.size >= (totalAllocationSize));
 
 	gpuBuffer = VulkanBufferBuilder(totalAllocationSize, debugName + " mesh Data")
-		.WithBufferUsage(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer)
+		.WithBufferUsage(	vk::BufferUsageFlagBits::eVertexBuffer	| 
+							vk::BufferUsageFlagBits::eIndexBuffer	| 
+							vk::BufferUsageFlagBits::eTransferDst	| 
+							vk::BufferUsageFlagBits::eStorageBuffer |
+							extraUses)
 		.Build(sourceDevice, renderer->GetMemoryAllocator());
 
 	//need to now copy vertex data to device memory
@@ -134,9 +148,13 @@ void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::Comman
 		memcpy(dataPtr + offset, attributeDataSources[i], copySize);
 		offset += copySize;
 	}
-	size_t indexDataOffset = offset;
+	
 	if (GetIndexCount() > 0) {
+		size_t indexDataOffset = offset;
+
 		memcpy(dataPtr + indexDataOffset, GetIndexData().data(), indexDataSize);
+		indexType		= vk::IndexType::eUint32;	
+		indexOffset		= vertexDataSize;
 	}
 	stagingBuffer.Unmap();
 
@@ -145,14 +163,14 @@ void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::Comman
 		copyRegion.size = vertexDataSize + indexDataSize;
 		cmdBuffer.copyBuffer(stagingBuffer.buffer, gpuBuffer.buffer, copyRegion);
 	}
-	indexOffset		= vertexDataSize;
+
 }
 
 void VulkanMesh::BindToCommandBuffer(vk::CommandBuffer  buffer) const {
 	buffer.bindVertexBuffers(0, (unsigned int)usedBuffers.size(), &usedBuffers[0], &usedOffsets[0]);
 
 	if (GetIndexCount() > 0) {
-		buffer.bindIndexBuffer(gpuBuffer.buffer, indexOffset, vk::IndexType::eUint32);
+		buffer.bindIndexBuffer(gpuBuffer.buffer, indexOffset, indexType);
 	}
 }
 
@@ -193,23 +211,54 @@ size_t VulkanMesh::CalculateGPUAllocationSize() const {
 	atrributeSizeFunc(VertexAttribute::JointIndices, GetSkinIndexData().size());
 
 	size_t vertexDataSize = vSize * GetVertexCount();
-	size_t indexDataSize = sizeof(int) * GetIndexCount();
+	size_t indexDataSize = 0;
+
+	if (GetIndexCount() > 0) {
+		int elementSize = (indexType == vk::IndexType::eUint32) ? 4 : 2;
+		indexDataSize = elementSize * GetIndexCount();
+	}
 	return vertexDataSize + indexDataSize;
 }
 
-bool VulkanMesh::GetAttributeInformation(VertexAttribute v, const VulkanBuffer** outBuffer, uint32_t& outOffset, uint32_t& outRange) const {
+bool VulkanMesh::GetIndexInformation(vk::Buffer& outBuffer, uint32_t& outOffset, uint32_t& outRange, vk::IndexType& outType) {
+	if (indexType == vk::IndexType::eNoneKHR) {
+		return false;
+	}
+
+	int elementSize = (indexType == vk::IndexType::eUint32) ? 4: 2;
+	
+	outBuffer	= gpuBuffer.buffer;
+	outOffset	= indexOffset;
+	outRange	= elementSize * GetIndexCount();
+	outType		= indexType;
+
+	return true;
+}
+
+bool VulkanMesh::GetAttributeInformation(VertexAttribute v, vk::Buffer& outBuffer, uint32_t& outOffset, uint32_t& outRange, vk::Format& outFormat) const {
 	for (uint32_t i = 0; i < usedAttributes.size(); ++i) {
 		if (usedAttributes[i] != v) {
 			continue;
 		}
 
-		*outBuffer = &gpuBuffer;
-		outOffset = usedOffsets[i];
-
-		outRange = attributeSizes[v] * GetVertexCount();
+		outBuffer	= usedBuffers[i];
+		outOffset	= usedOffsets[i];
+		outRange	= attributeSizes[v] * GetVertexCount();
+		outFormat	= usedFormats[i];
 
 		return true;
 	}
 
 	return false;
 }
+
+//bool VulkanMesh::GetAttributeInformation(VertexAttribute v,  vk::VertexInputAttributeDescription& outDescription) const {
+//	for (const auto& i : attributeDescriptions) {
+//		if (i.binding != v) {
+//			continue;
+//		}
+//		outDescription = vk::VertexInputAttributeDescription(i);
+//		return true;
+//	}
+//	return false;
+//}

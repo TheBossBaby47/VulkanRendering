@@ -13,7 +13,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 using namespace NCL;
 using namespace Rendering;
 
-VulkanPipelineBuilder::VulkanPipelineBuilder(const std::string& pipeName)	{
+VulkanPipelineBuilder::VulkanPipelineBuilder(const std::string& pipeName) : VulkanPipelineBuilderBase(pipeName)	{
 	dynamicStateEnables[0] = vk::DynamicState::eViewport;
 	dynamicStateEnables[1] = vk::DynamicState::eScissor;
 
@@ -93,17 +93,6 @@ VulkanPipelineBuilder& VulkanPipelineBuilder::WithShader(const UniqueVulkanShade
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithLayout(vk::PipelineLayout layout) {
-	this->layout = layout;
-	pipelineCreate.setLayout(layout);
-	return *this;
-}
-
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithPushConstant(vk::ShaderStageFlags flags, uint32_t offset, uint32_t size) {
-	allPushConstants.emplace_back(vk::PushConstantRange(flags, offset, size));
-	return *this;
-}
-
 VulkanPipelineBuilder& VulkanPipelineBuilder::WithPass(vk::RenderPass& renderPass) {
 	pipelineCreate.setRenderPass(renderPass);
 	return *this;
@@ -125,23 +114,9 @@ VulkanPipelineBuilder& VulkanPipelineBuilder::WithColourFormats(const std::vecto
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithDescriptorSetLayout(uint32_t slot, vk::DescriptorSetLayout layout) {
-	assert(slot < 32);
-	while (allLayouts.size() <= slot) {
-		allLayouts.push_back(vk::DescriptorSetLayout());
-	}
-	allLayouts[slot] = layout;
-	return *this;
-}
-
 VulkanPipelineBuilder& VulkanPipelineBuilder::WithTessellationPatchVertexCount(uint32_t controlPointsPerPatch) {
 	tessellationCreate.setPatchControlPoints(controlPointsPerPatch);
 	pipelineCreate.setPTessellationState(&tessellationCreate);
-	return *this;
-}
-
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithDescriptorBuffers() {
-	pipelineCreate.flags |= vk::PipelineCreateFlagBits::eDescriptorBufferEXT;
 	return *this;
 }
 

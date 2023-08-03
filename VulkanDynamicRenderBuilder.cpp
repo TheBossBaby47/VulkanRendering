@@ -72,6 +72,6 @@ VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::BeginRendering(vk::Comma
 		renderInfo.setPStencilAttachment(&depthAttachment);
 	}
 
-	buffer.beginRendering(renderInfo, *NCL::Rendering::Vulkan::dispatcher);
+	buffer.beginRendering(renderInfo/*, *NCL::Rendering::Vulkan::dispatcher*/);
 	return *this;
 }

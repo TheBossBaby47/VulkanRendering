@@ -33,6 +33,7 @@ VulkanBufferBuilder& VulkanBufferBuilder::WithMemoryProperties(vk::MemoryPropert
 VulkanBufferBuilder& VulkanBufferBuilder::WithHostVisibility() {
 	vmaInfo.requiredFlags |= (VkMemoryPropertyFlags)vk::MemoryPropertyFlagBits::eHostVisible;
 	vmaInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+
 	return *this;
 }
 

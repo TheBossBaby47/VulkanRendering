@@ -33,12 +33,9 @@ VulkanTexture::~VulkanTexture() {
 	}
 }
 
-UniqueVulkanTexture VulkanTexture::CreateColourTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName, bool isFloat, bool useMips) {
-	vk::Format			 format = isFloat ? vk::Format::eR32G32B32A32Sfloat : vk::Format::eB8G8R8A8Unorm;
+UniqueVulkanTexture VulkanTexture::CreateColourTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName, vk::Format format, vk::ImageUsageFlags usage, vk::ImageLayout		 layout, bool useMips) {
 	vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
-	vk::ImageLayout		 layout = vk::ImageLayout::eColorAttachmentOptimal;
-	vk::ImageUsageFlags  usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
-
+	
 	int numMips = useMips ? MipCount(width, height) : 1;
 
 	VulkanTexture* t = new VulkanTexture();
@@ -252,4 +249,14 @@ void VulkanTexture::GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout e
 			}
 		}
 	}
+}
+
+void VulkanTexture::FillImageStorageView(vk::ImageView& view, vk::Device device) {
+	//vk::ImageViewCreateInfo createInfo = vk::ImageViewCreateInfo()
+	//	.setViewType(texIsCubemap ? vk::ImageViewType::eCube : vk::ImageViewType::e2D)
+	//	.setFormat(format)
+	//	.setSubresourceRange(vk::ImageSubresourceRange(aspectType, 0, mipCount, 0, layerCount))
+	//	.setImage(image);
+
+	//view = device.createImageViewUnique(createInfo);
 }
