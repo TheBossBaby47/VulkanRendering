@@ -11,7 +11,6 @@ License: MIT (see LICENSE file at the top of the source tree)
 using namespace NCL;
 using namespace Rendering;
 
-//vk::DispatchLoaderDynamic* NCL::Rendering::Vulkan::dispatcher = nullptr;
 std::map<vk::Device, vk::DescriptorSetLayout > NCL::Rendering::Vulkan::nullDescriptors;
 
 vk::DynamicLoader NCL::Rendering::Vulkan::dynamicLoader;
@@ -27,7 +26,7 @@ void Vulkan::SetDebugName(vk::Device device, vk::ObjectType t, uint64_t handle, 
 		vk::DebugUtilsObjectNameInfoEXT()
 		.setObjectType(t)
 		.setObjectHandle(handle)
-		.setPObjectName(debugName.c_str())/*, *Vulkan::dispatcher*/
+		.setPObjectName(debugName.c_str())
 	);
 };
 
@@ -35,11 +34,11 @@ void Vulkan::BeginDebugArea(vk::CommandBuffer b, const std::string& name) {
 	vk::DebugUtilsLabelEXT labelInfo;
 	labelInfo.pLabelName = name.c_str();
 
-	b.beginDebugUtilsLabelEXT(labelInfo/*, *Vulkan::dispatcher*/);
+	b.beginDebugUtilsLabelEXT(labelInfo);
 }
 
 void Vulkan::EndDebugArea(vk::CommandBuffer b) {
-	b.endDebugUtilsLabelEXT(/**Vulkan::dispatcher*/);
+	b.endDebugUtilsLabelEXT();
 }
 
 void Vulkan::SetNullDescriptor(vk::Device device, vk::DescriptorSetLayout layout) {
@@ -73,22 +72,6 @@ void	Vulkan::ImageTransitionBarrier(vk::CommandBuffer  cmdBuffer, vk::Image imag
 
 	cmdBuffer.pipelineBarrier(srcStage, dstStage, vk::DependencyFlags(), 0, nullptr, 0, nullptr, 1, &memoryBarrier);
 }
-
-/*
-void VulkanRenderer::TransitionSwapchainForRendering(vk::CommandBuffer buffer) {
-	Vulkan::ImageTransitionBarrier(buffer, swapChainList[currentSwap]->image,
-		vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal,
-		vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-		vk::PipelineStageFlagBits::eColorAttachmentOutput);
-}
-
-void VulkanRenderer::TransitionSwapchainForPresenting(vk::CommandBuffer buffer) {
-	Vulkan::ImageTransitionBarrier(buffer, swapChainList[currentSwap]->image,
-		vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
-		vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eAllCommands,
-		vk::PipelineStageFlagBits::eBottomOfPipe);
-}
-*/
 
 void Vulkan::TransitionPresentToColour(vk::CommandBuffer  buffer, vk::Image t) {
 	ImageTransitionBarrier(buffer, t,
@@ -140,4 +123,57 @@ bool Vulkan::MessageAssert(bool condition, const char* msg) {
 		std::cerr << msg << "\n";
 	}
 	return condition;
+}
+
+vk::CommandBuffer	Vulkan::BeginCmdBuffer(vk::Device device, vk::CommandPool fromPool, const std::string& debugName) {
+	vk::CommandBufferAllocateInfo bufferInfo = vk::CommandBufferAllocateInfo(fromPool, vk::CommandBufferLevel::ePrimary, 1);
+
+	auto buffers = device.allocateCommandBuffers(bufferInfo); //Func returns a vector!
+
+	if (!debugName.empty()) {
+		Vulkan::SetDebugName(device, vk::ObjectType::eCommandBuffer, Vulkan::GetVulkanHandle(buffers[0]), debugName);
+	}
+	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo();
+	buffers[0].begin(beginInfo);
+	return buffers[0];
+}
+
+void	Vulkan::SubmitCmdBuffer(vk::CommandBuffer  buffer, vk::Queue queue, vk::Fence fence, vk::Semaphore waitSemaphore, vk::Semaphore signalSempahore) {
+	if (buffer) {
+		buffer.end();
+	}
+	else {
+		std::cout << __FUNCTION__ << " Submitting invalid buffer?\n";
+		return;
+	}
+
+	vk::SubmitInfo submitInfo = vk::SubmitInfo();
+	submitInfo.setCommandBufferCount(1);
+	submitInfo.setPCommandBuffers(&buffer);
+
+	vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eTopOfPipe;
+
+	if (waitSemaphore) {
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &waitSemaphore;
+		submitInfo.pWaitDstStageMask = &waitStage;
+	}
+	if (signalSempahore) {
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &signalSempahore;
+	}
+
+	queue.submit(submitInfo, fence);
+}
+
+void		Vulkan::SubmitCmdBufferWait(vk::CommandBuffer  buffer, vk::Device device, vk::Queue queue) {
+	vk::Fence fence = device.createFence({});
+
+	SubmitCmdBuffer(buffer, queue, fence);
+
+	if (device.waitForFences(1, &fence, true, UINT64_MAX) != vk::Result::eSuccess) {
+		std::cout << __FUNCTION__ << " Device queue submission taking too long?\n";
+	};
+
+	device.destroyFence(fence);
 }

@@ -39,6 +39,10 @@ namespace NCL::Rendering {
 
 		bool MessageAssert(bool condition, const char* msg);
 
+		vk::CommandBuffer	BeginCmdBuffer(vk::Device device, vk::CommandPool fromPool, const std::string& debugName = "");
+		void	SubmitCmdBuffer(vk::CommandBuffer  buffer, vk::Queue queue, vk::Fence fence = {}, vk::Semaphore waitSemaphore = {}, vk::Semaphore signalSempahore = {});
+		void	SubmitCmdBufferWait(vk::CommandBuffer  buffer, vk::Device device, vk::Queue queue);
+
 		extern vk::DynamicLoader dynamicLoader;
 		//extern vk::DispatchLoaderDynamic*	dispatcher;
 		//extern vk::DispatchLoaderStatic*	staticDispatcher;

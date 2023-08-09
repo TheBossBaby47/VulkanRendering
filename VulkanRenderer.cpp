@@ -31,10 +31,10 @@ VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
 	allocatorInfo		= {};
 
 	deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-	deviceExtensions.push_back("VK_KHR_dynamic_rendering");
-	deviceExtensions.push_back("VK_KHR_maintenance4");
-	deviceExtensions.push_back("VK_KHR_depth_stencil_resolve");
-	deviceExtensions.push_back("VK_KHR_create_renderpass2");
+	deviceExtensions.push_back("VK_KHR_dynamic_rendering");		//Now in core 1.3
+	deviceExtensions.push_back("VK_KHR_maintenance4");			//Now in core 1.3
+	deviceExtensions.push_back("VK_KHR_depth_stencil_resolve");	//Now in core 1.2
+	deviceExtensions.push_back("VK_KHR_create_renderpass2");		//Now in core 1.2
 
 	instanceExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
 	instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
@@ -340,19 +340,13 @@ void	VulkanRenderer::InitCommandPools() {
 }
 
 void	VulkanRenderer::InitMemoryAllocator() {
-	//::vk::defaultDispatchLoaderDynamic.vkGetDeviceProcAddr;
-	//device.createCommandPool()
-
-	//::vk::DispatchLoaderDynamic::vkGetDeviceProcAddr;
 	VmaVulkanFunctions funcs = {};
 	funcs.vkGetInstanceProcAddr = ::vk::defaultDispatchLoaderDynamic.vkGetInstanceProcAddr;
 	funcs.vkGetDeviceProcAddr   = ::vk::defaultDispatchLoaderDynamic.vkGetDeviceProcAddr;
 
-
 	allocatorInfo.physicalDevice = gpu;
 	allocatorInfo.device	= device;
 	allocatorInfo.instance	= instance;
-
 
 	allocatorInfo.pVulkanFunctions = &funcs;
 	vmaCreateAllocator(&allocatorInfo, &memoryAllocator);

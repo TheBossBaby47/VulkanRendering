@@ -44,7 +44,7 @@ VulkanMesh::VulkanMesh(const std::string& filename) : Mesh(filename) {
 VulkanMesh::~VulkanMesh()	{
 }
 
-void VulkanMesh::UploadToGPU(RendererBase* r, vk::BufferUsageFlagBits extraUses) {
+void VulkanMesh::UploadToGPU(RendererBase* r, vk::BufferUsageFlags extraUses) {
 	assert(ValidateMeshData());
 
 	//TODO: Do we care about supporting 16bit indices?
@@ -77,7 +77,7 @@ void VulkanMesh::UploadToGPU(RendererBase* r)  {
 	UploadToGPU(r, {});
 }
 
-void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::CommandBuffer cmdBuffer, VulkanBuffer& stagingBuffer, vk::BufferUsageFlagBits extraUses) {
+void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::CommandBuffer cmdBuffer, VulkanBuffer& stagingBuffer, vk::BufferUsageFlags extraUses) {
 	usedAttributes.clear();
 	attributeBindings.clear();
 	attributeDescriptions.clear();
@@ -150,11 +150,9 @@ void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::Comman
 	}
 	
 	if (GetIndexCount() > 0) {
-		size_t indexDataOffset = offset;
-
-		memcpy(dataPtr + indexDataOffset, GetIndexData().data(), indexDataSize);
+		memcpy(dataPtr + offset, GetIndexData().data(), indexDataSize);
 		indexType		= vk::IndexType::eUint32;	
-		indexOffset		= vertexDataSize;
+		indexOffset		= offset;
 	}
 	stagingBuffer.Unmap();
 
