@@ -8,11 +8,11 @@ License: MIT (see LICENSE file at the top of the source tree)
 #pragma once
 #include "../NCLCoreClasses/Shader.h"
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanShader : public Shader {
 	public:
 		friend class VulkanRenderer;
-		friend class VulkanShaderBuilder;
+		friend class ShaderBuilder;
 
 		void ReloadShader() override;
 

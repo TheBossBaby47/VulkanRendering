@@ -7,20 +7,20 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-namespace NCL::Rendering {
-	class VulkanDynamicRenderBuilder	{
+namespace NCL::Rendering::Vulkan {
+	class DynamicRenderBuilder	{
 	public:
-		VulkanDynamicRenderBuilder();
-		~VulkanDynamicRenderBuilder() {}
+		DynamicRenderBuilder();
+		~DynamicRenderBuilder() {}
 
-		VulkanDynamicRenderBuilder& WithColourAttachment(
+		DynamicRenderBuilder& WithColourAttachment(
 			vk::ImageView	texture,
 			vk::ImageLayout layout = vk::ImageLayout::eColorAttachmentOptimal,
 			bool clear = true,
 			vk::ClearValue clearValue = vk::ClearColorValue(std::array<float, 4>{0, 0, 0, 1})
 		);
 
-		VulkanDynamicRenderBuilder& WithDepthAttachment(
+		DynamicRenderBuilder& WithDepthAttachment(
 			vk::ImageView	texture,
 			vk::ImageLayout layout = vk::ImageLayout::eDepthAttachmentOptimal,
 			bool clear = true,
@@ -28,13 +28,13 @@ namespace NCL::Rendering {
 			bool withStencil = false
 		);
 
-		VulkanDynamicRenderBuilder& WithSecondaryBuffers();
+		DynamicRenderBuilder& WithSecondaryBuffers();
 
-		VulkanDynamicRenderBuilder& WithRenderArea(vk::Rect2D area);
+		DynamicRenderBuilder& WithRenderArea(vk::Rect2D area);
 
-		VulkanDynamicRenderBuilder& WithLayerCount(int count);
+		DynamicRenderBuilder& WithLayerCount(int count);
 
-		VulkanDynamicRenderBuilder& BeginRendering(vk::CommandBuffer  buffer);
+		DynamicRenderBuilder& BeginRendering(vk::CommandBuffer  buffer);
 	protected:
 		vk::RenderingInfoKHR renderInfo;
 		std::vector< vk::RenderingAttachmentInfoKHR > colourAttachments;

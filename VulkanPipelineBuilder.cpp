@@ -12,8 +12,9 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
-VulkanPipelineBuilder::VulkanPipelineBuilder(const std::string& pipeName) : VulkanPipelineBuilderBase(pipeName)	{
+PipelineBuilder::PipelineBuilder(vk::Device device) : PipelineBuilderBase(device)	{
 	dynamicStateEnables[0] = vk::DynamicState::eViewport;
 	dynamicStateEnables[1] = vk::DynamicState::eScissor;
 
@@ -41,12 +42,10 @@ VulkanPipelineBuilder::VulkanPipelineBuilder(const std::string& pipeName) : Vulk
 		.setFrontFace(vk::FrontFace::eCounterClockwise)
 		.setLineWidth(1.0f);
 
-	debugName = pipeName;
-
 	inputAsmCreate.setTopology(vk::PrimitiveTopology::eTriangleList);
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithDepthState(vk::CompareOp op, bool depthEnabled, bool writeEnabled, bool stencilEnabled) {
+PipelineBuilder& PipelineBuilder::WithDepthState(vk::CompareOp op, bool depthEnabled, bool writeEnabled, bool stencilEnabled) {
 	depthStencilCreate.setDepthCompareOp(op)
 		.setDepthTestEnable(depthEnabled)
 		.setDepthWriteEnable(writeEnabled)
@@ -54,7 +53,7 @@ VulkanPipelineBuilder& VulkanPipelineBuilder::WithDepthState(vk::CompareOp op, b
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithBlendState(vk::BlendFactor srcState, vk::BlendFactor dstState, bool isEnabled) {
+PipelineBuilder& PipelineBuilder::WithBlendState(vk::BlendFactor srcState, vk::BlendFactor dstState, bool isEnabled) {
 	vk::PipelineColorBlendAttachmentState pipeBlend;
 
 	pipeBlend.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
@@ -73,54 +72,54 @@ VulkanPipelineBuilder& VulkanPipelineBuilder::WithBlendState(vk::BlendFactor src
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithRaster(vk::CullModeFlagBits cullMode, vk::PolygonMode polyMode) {
+PipelineBuilder& PipelineBuilder::WithRaster(vk::CullModeFlagBits cullMode, vk::PolygonMode polyMode) {
 	rasterCreate.setCullMode(cullMode).setPolygonMode(polyMode);
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithVertexInputState(const vk::PipelineVertexInputStateCreateInfo& spec) {
+PipelineBuilder& PipelineBuilder::WithVertexInputState(const vk::PipelineVertexInputStateCreateInfo& spec) {
 	vertexCreate = spec;
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithTopology(vk::PrimitiveTopology topology) {
+PipelineBuilder& PipelineBuilder::WithTopology(vk::PrimitiveTopology topology) {
 	inputAsmCreate.setTopology(topology);
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithShader(const UniqueVulkanShader& shader) {
+PipelineBuilder& PipelineBuilder::WithShader(const UniqueVulkanShader& shader) {
 	shader->FillShaderStageCreateInfo(pipelineCreate);
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithPass(vk::RenderPass& renderPass) {
+PipelineBuilder& PipelineBuilder::WithPass(vk::RenderPass& renderPass) {
 	pipelineCreate.setRenderPass(renderPass);
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithDepthStencilFormat(vk::Format depthFormat) {
+PipelineBuilder& PipelineBuilder::WithDepthStencilFormat(vk::Format depthFormat) {
 	depthRenderingFormat	= depthFormat;
 	stencilRenderingFormat	= depthFormat;
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithDepthFormat(vk::Format depthFormat) {
+PipelineBuilder& PipelineBuilder::WithDepthFormat(vk::Format depthFormat) {
 	depthRenderingFormat = depthFormat;
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithColourFormats(const std::vector<vk::Format>& formats) {
+PipelineBuilder& PipelineBuilder::WithColourFormats(const std::vector<vk::Format>& formats) {
 	allColourRenderingFormats = formats;
 	return *this;
 }
 
-VulkanPipelineBuilder& VulkanPipelineBuilder::WithTessellationPatchVertexCount(uint32_t controlPointsPerPatch) {
+PipelineBuilder& PipelineBuilder::WithTessellationPatchVertexCount(uint32_t controlPointsPerPatch) {
 	tessellationCreate.setPatchControlPoints(controlPointsPerPatch);
 	pipelineCreate.setPTessellationState(&tessellationCreate);
 	return *this;
 }
 
-VulkanPipeline	VulkanPipelineBuilder::Build(vk::Device device, vk::PipelineCache cache) {
+VulkanPipeline	PipelineBuilder::Build(const std::string& debugName, vk::PipelineCache cache) {
 	vk::PipelineLayoutCreateInfo pipeLayoutCreate = vk::PipelineLayoutCreateInfo()
 		.setSetLayouts(allLayouts)
 		.setPushConstantRanges(allPushConstants);
@@ -136,20 +135,12 @@ VulkanPipeline	VulkanPipelineBuilder::Build(vk::Device device, vk::PipelineCache
 		}
 	}
 
-	//Patch any invalid descriptors to be empty
-	vk::DescriptorSetLayout nullLayout = Vulkan::nullDescriptors[device];
-	for (int i = 0; i < allLayouts.size(); ++i) {
-		if (!allLayouts[i]) {
-			allLayouts[i] = nullLayout;
-		}
-	}
-
 	blendCreate.setAttachments(blendAttachStates);
 	blendCreate.setBlendConstants({ 1.0f, 1.0f, 1.0f, 1.0f });
 
 	VulkanPipeline output;
 
-	output.layout = device.createPipelineLayoutUnique(pipeLayoutCreate);
+	output.layout = sourceDevice.createPipelineLayoutUnique(pipeLayoutCreate);
 
 	pipelineCreate.setPColorBlendState(&blendCreate)
 		.setPDepthStencilState(&depthStencilCreate)
@@ -171,10 +162,10 @@ VulkanPipeline	VulkanPipelineBuilder::Build(vk::Device device, vk::PipelineCache
 		pipelineCreate.pNext = &renderingCreate;
 	}
 
-	output.pipeline			= device.createGraphicsPipelineUnique(cache, pipelineCreate).value;
+	output.pipeline			= sourceDevice.createGraphicsPipelineUnique(cache, pipelineCreate).value;
 
 	if (!debugName.empty()) {
-		Vulkan::SetDebugName(device, vk::ObjectType::ePipeline, Vulkan::GetVulkanHandle(*output.pipeline), debugName);
+		SetDebugName(sourceDevice, vk::ObjectType::ePipeline, GetVulkanHandle(*output.pipeline), debugName);
 	}
 
 	return output;

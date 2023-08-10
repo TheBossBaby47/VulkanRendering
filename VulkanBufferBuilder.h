@@ -8,29 +8,28 @@ License: MIT (see LICENSE file at the top of the source tree)
 #pragma once
 #include "VulkanBuffers.h"
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanBuffer;
 
-	class VulkanBufferBuilder	{
+	class BufferBuilder	{
 	public:
-		VulkanBufferBuilder(size_t byteSize, const std::string& name = "");
+		BufferBuilder(vk::Device device, VmaAllocator allocator);
 
-		VulkanBufferBuilder& WithBufferUsage(vk::BufferUsageFlags flags);
-		VulkanBufferBuilder& WithMemoryProperties(vk::MemoryPropertyFlags flags);
-		VulkanBufferBuilder& WithHostVisibility();
-		VulkanBufferBuilder& WithDeviceAddresses();
-		VulkanBufferBuilder& WithPersistentMapping();
+		BufferBuilder& WithBufferUsage(vk::BufferUsageFlags flags);
+		BufferBuilder& WithMemoryProperties(vk::MemoryPropertyFlags flags);
+		BufferBuilder& WithHostVisibility();
+		BufferBuilder& WithDeviceAddresses();
+		BufferBuilder& WithPersistentMapping();
 
-		VulkanBufferBuilder& WithUniqueAllocation();
+		BufferBuilder& WithUniqueAllocation();
 
-		~VulkanBufferBuilder() {};
+		~BufferBuilder() {};
 
-		VulkanBuffer Build(vk::Device device, VmaAllocator allocator);
+		VulkanBuffer Build(size_t byteSize, const std::string& name = "");
 
 	protected:
-		std::string		debugName;
-		VulkanBuffer	outputBuffer;
-
+		vk::Device sourceDevice;
+		VmaAllocator sourceAllocator;
 		VmaAllocationCreateInfo vmaInfo;
 		vk::BufferCreateInfo	vkInfo;
 	};

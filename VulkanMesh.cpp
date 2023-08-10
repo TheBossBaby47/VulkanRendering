@@ -12,6 +12,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
 //These are both carefully arranged to match the MeshBuffer enum class!
 vk::Format attributeFormats[] = {
@@ -54,20 +55,22 @@ void VulkanMesh::UploadToGPU(RendererBase* r, vk::BufferUsageFlags extraUses) {
 
 	VulkanRenderer* renderer = (VulkanRenderer*)r;
 
-	vk::Queue gfxQueue = renderer->GetQueue(CommandBufferType::Graphics);
+	vk::Queue gfxQueue		= renderer->GetQueue(CommandBufferType::Graphics);
+	vk::CommandPool pool	= renderer->GetCommandPool(CommandBufferType::Graphics);
+	vk::Device device		= renderer->GetDevice();
 
-	vk::CommandBuffer cmdBuffer = renderer->BeginCmdBuffer(CommandBufferType::Graphics);
+	vk::UniqueCommandBuffer cmdBuffer = CmdBufferBegin(device, pool, "VulkanMesh upload");
 
 	size_t allocationSize = CalculateGPUAllocationSize();
 
-	VulkanBuffer stagingBuffer = VulkanBufferBuilder(allocationSize)
+	VulkanBuffer stagingBuffer = BufferBuilder(renderer->GetDevice(), renderer->GetMemoryAllocator())
 		.WithBufferUsage(vk::BufferUsageFlagBits::eTransferSrc)
 		.WithHostVisibility()
-		.Build(renderer->GetDevice(), renderer->GetMemoryAllocator());
+		.Build(allocationSize, "Staging Buffer");
 
-	UploadToGPU(renderer, gfxQueue, cmdBuffer, stagingBuffer, extraUses);
+	UploadToGPU(renderer, gfxQueue, *cmdBuffer, stagingBuffer, extraUses);
 
-	renderer->SubmitCmdBufferWait(cmdBuffer, CommandBufferType::Graphics);
+	CmdBufferEndSubmitWait(*cmdBuffer, device, gfxQueue);
 	//The staging buffer is auto destroyed, but that's fine!
 	//We made the GPU wait for the commands to complete, so 
 	//the staging buffer has been read from at this point
@@ -127,13 +130,13 @@ void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::Comman
 
 	assert(stagingBuffer.size >= (totalAllocationSize));
 
-	gpuBuffer = VulkanBufferBuilder(totalAllocationSize, debugName + " mesh Data")
+	gpuBuffer = BufferBuilder(sourceDevice, renderer->GetMemoryAllocator())
 		.WithBufferUsage(	vk::BufferUsageFlagBits::eVertexBuffer	| 
 							vk::BufferUsageFlagBits::eIndexBuffer	| 
 							vk::BufferUsageFlagBits::eTransferDst	| 
 							vk::BufferUsageFlagBits::eStorageBuffer |
 							extraUses)
-		.Build(sourceDevice, renderer->GetMemoryAllocator());
+		.Build(totalAllocationSize, debugName + " mesh Data");
 
 	//need to now copy vertex data to device memory
 	char* dataPtr = (char*)stagingBuffer.Map();

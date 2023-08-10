@@ -9,6 +9,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
 void VulkanBuffer::CopyData(void* data, size_t size) {
 	if (allocationInfo.pMappedData) {

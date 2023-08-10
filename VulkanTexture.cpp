@@ -14,6 +14,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
 int MipCount(uint32_t width, uint32_t height) {
 	return (int)floor(log2(float(std::min(width, height)))) + 1;
@@ -134,14 +135,17 @@ void VulkanTexture::GenerateTextureFromDataInternal(VulkanRenderer* vkRenderer, 
 	int faceSize = width * height * channelCount;
 	int allocationSize = faceSize * (int)dataSrcs.size();
 
-	VulkanBuffer stagingBuffer = VulkanBufferBuilder(allocationSize)
+	vk::Device device		= vkRenderer->GetDevice();
+	vk::Queue gfxQueue		= vkRenderer->GetQueue(CommandBufferType::Graphics);
+	vk::CommandPool pool	= vkRenderer->GetCommandPool(CommandBufferType::Graphics);
+
+	VulkanBuffer stagingBuffer = BufferBuilder(device, vkRenderer->GetMemoryAllocator())
 		.WithBufferUsage(vk::BufferUsageFlagBits::eTransferSrc)
 		.WithHostVisibility()
 		//.WithPersistentMapping()
-		.Build(vkRenderer->GetDevice(), vkRenderer->GetMemoryAllocator());
+		.Build(allocationSize, "Staging Buffer");
 
-	vk::Device device = vkRenderer->GetDevice();
-	vk::CommandBuffer cmdBuffer = vkRenderer->BeginCmdBuffer();
+	vk::UniqueCommandBuffer cmdBuffer = CmdBufferBegin(device, pool, "VulkanTexture upload");
 
 	//our buffer now has memory! Copy some texture date to it...
 	char* gpuPtr = (char*)stagingBuffer.Map();
@@ -149,7 +153,7 @@ void VulkanTexture::GenerateTextureFromDataInternal(VulkanRenderer* vkRenderer, 
 		memcpy(gpuPtr, dataSrcs[i], faceSize);
 		gpuPtr += faceSize;
 		//We'll also set up each layer of the image to accept new transfers
-		Vulkan::ImageTransitionBarrier(cmdBuffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectType, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, 0, i);
+		ImageTransitionBarrier(*cmdBuffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectType, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, 0, i);
 	}
 	stagingBuffer.Unmap();
 
@@ -158,15 +162,15 @@ void VulkanTexture::GenerateTextureFromDataInternal(VulkanRenderer* vkRenderer, 
 	copyInfo.imageExtent = vk::Extent3D(width, height, 1);
 
 	//Copy from staging buffer to image memory...
-	cmdBuffer.copyBufferToImage(stagingBuffer.buffer, image, vk::ImageLayout::eTransferDstOptimal, copyInfo);
+	cmdBuffer->copyBufferToImage(stagingBuffer.buffer, image, vk::ImageLayout::eTransferDstOptimal, copyInfo);
 
 	if (mipCount > 1) {
-		GenerateMipMaps(cmdBuffer, vk::ImageLayout::eShaderReadOnlyOptimal, vk::PipelineStageFlagBits::eFragmentShader);
+		GenerateMipMaps(*cmdBuffer, vk::ImageLayout::eShaderReadOnlyOptimal, vk::PipelineStageFlagBits::eFragmentShader);
 	}
 	else {
-		Vulkan::ImageTransitionBarrier(cmdBuffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, aspectType, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader);
+		ImageTransitionBarrier(*cmdBuffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, aspectType, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader);
 	}
-	vkRenderer->SubmitCmdBufferWait(cmdBuffer, CommandBufferType::Graphics);
+	CmdBufferEndSubmitWait(*cmdBuffer, device, gfxQueue);
 	//Staging buffer will fall out of scope and be auto destroyed
 }
 
@@ -205,17 +209,22 @@ void VulkanTexture::GenerateTextureInternal(VulkanRenderer* vkRenderer, uint32_t
 
 	defaultView = vkRenderer->GetDevice().createImageViewUnique(createInfo);
 
-	Vulkan::SetDebugName(vkRenderer->GetDevice(), vk::ObjectType::eImage, Vulkan::GetVulkanHandle(image), debugName);
-	Vulkan::SetDebugName(vkRenderer->GetDevice(), vk::ObjectType::eImageView, Vulkan::GetVulkanHandle(*defaultView), debugName);
+	SetDebugName(vkRenderer->GetDevice(), vk::ObjectType::eImage, GetVulkanHandle(image), debugName);
+	SetDebugName(vkRenderer->GetDevice(), vk::ObjectType::eImageView, GetVulkanHandle(*defaultView), debugName);
 
-	vk::CommandBuffer tempBuffer = vkRenderer->BeginCmdBuffer();
-	Vulkan::ImageTransitionBarrier(tempBuffer, GetImage(), vk::ImageLayout::eUndefined, outLayout, aspectType, vk::PipelineStageFlagBits::eTopOfPipe, pipeType);
-	vkRenderer->SubmitCmdBufferWait(tempBuffer, CommandBufferType::Graphics);
+
+	vk::Queue gfxQueue		= vkRenderer->GetQueue(CommandBufferType::Graphics);
+	vk::CommandPool pool	= vkRenderer->GetCommandPool(CommandBufferType::Graphics);
+	vk::Device device		= vkRenderer->GetDevice();
+
+	vk::UniqueCommandBuffer cmdBuffer = CmdBufferBegin(device, pool, "VulkanTexture generate");
+	ImageTransitionBarrier(*cmdBuffer, GetImage(), vk::ImageLayout::eUndefined, outLayout, aspectType, vk::PipelineStageFlagBits::eTopOfPipe, pipeType);
+	CmdBufferEndSubmitWait(*cmdBuffer, device, gfxQueue);
 }
 
 void VulkanTexture::GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout endLayout, vk::PipelineStageFlags endFlags) {
 	for (int layer = 0; layer < layerCount; ++layer) {	
-		Vulkan::ImageTransitionBarrier(buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferSrcOptimal, aspectType, vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eTransfer, 0, layer);
+		ImageTransitionBarrier(buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferSrcOptimal, aspectType, vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eTransfer, 0, layer);
 		
 		for (uint32_t mip = 1; mip < mipCount; ++mip) {
 			vk::ImageBlit blitData;
@@ -237,15 +246,15 @@ void VulkanTexture::GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout e
 			blitData.dstOffsets[1].y = std::max(height >> mip, (uint32_t)1);
 			blitData.dstOffsets[1].z = 1;
 
-			Vulkan::ImageTransitionBarrier(buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectType, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, mip, layer);
+			ImageTransitionBarrier(buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectType, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, mip, layer);
 			buffer.blitImage(image, vk::ImageLayout::eTransferSrcOptimal, image, vk::ImageLayout::eTransferDstOptimal, blitData, vk::Filter::eLinear);
-			Vulkan::ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferSrcOptimal, endLayout, aspectType, vk::PipelineStageFlagBits::eTransfer, endFlags, mip - 1, layer);
+			ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferSrcOptimal, endLayout, aspectType, vk::PipelineStageFlagBits::eTransfer, endFlags, mip - 1, layer);
 
 			if (mip < this->mipCount - 1) {
-				Vulkan::ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal, aspectType, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, mip, layer);
+				ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal, aspectType, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, mip, layer);
 			}
 			else {
-				Vulkan::ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferDstOptimal, endLayout, aspectType, vk::PipelineStageFlagBits::eTransfer, endFlags, mip, layer);
+				ImageTransitionBarrier(buffer, image, vk::ImageLayout::eTransferDstOptimal, endLayout, aspectType, vk::PipelineStageFlagBits::eTransfer, endFlags, mip, layer);
 			}
 		}
 	}

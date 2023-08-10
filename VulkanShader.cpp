@@ -12,6 +12,7 @@ using std::ifstream;
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
 //These have both been ordered to match the ShaderStages enum for easy lookup!
 vk::ShaderStageFlagBits stageTypes[] = {

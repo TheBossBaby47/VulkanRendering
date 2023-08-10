@@ -11,57 +11,62 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
-VulkanBufferBuilder::VulkanBufferBuilder(size_t byteSize, const std::string& name) {
-	outputBuffer.size	= byteSize;
-	vkInfo.size			= byteSize;
-	debugName			= name;
+BufferBuilder::BufferBuilder(vk::Device device, VmaAllocator allocator) {
+	sourceDevice	= device;
+	sourceAllocator = allocator;
 	vmaInfo = {};
 	vmaInfo.usage		= VMA_MEMORY_USAGE_AUTO;
 }
 
-VulkanBufferBuilder& VulkanBufferBuilder::WithBufferUsage(vk::BufferUsageFlags flags) {
+BufferBuilder& BufferBuilder::WithBufferUsage(vk::BufferUsageFlags flags) {
 	vkInfo.usage |= flags;
 	return *this;
 }
 
-VulkanBufferBuilder& VulkanBufferBuilder::WithMemoryProperties(vk::MemoryPropertyFlags flags) {
+BufferBuilder& BufferBuilder::WithMemoryProperties(vk::MemoryPropertyFlags flags) {
 	vmaInfo.requiredFlags |= (VkMemoryPropertyFlags)flags;
 	return *this;
 }
 
-VulkanBufferBuilder& VulkanBufferBuilder::WithHostVisibility() {
+BufferBuilder& BufferBuilder::WithHostVisibility() {
 	vmaInfo.requiredFlags |= (VkMemoryPropertyFlags)vk::MemoryPropertyFlagBits::eHostVisible;
 	vmaInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
 
 	return *this;
 }
 
-VulkanBufferBuilder& VulkanBufferBuilder::WithDeviceAddresses() {
+BufferBuilder& BufferBuilder::WithDeviceAddresses() {
 	vkInfo.usage |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
 	return *this;
 }
 
-VulkanBufferBuilder& VulkanBufferBuilder::WithPersistentMapping() {
+BufferBuilder& BufferBuilder::WithPersistentMapping() {
 	vmaInfo.requiredFlags |= (VkMemoryPropertyFlags)vk::MemoryPropertyFlagBits::eHostCoherent;
 
 	vmaInfo.flags |= (VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
 	return *this;
 }
 
-VulkanBufferBuilder& VulkanBufferBuilder::WithUniqueAllocation() {
+BufferBuilder& BufferBuilder::WithUniqueAllocation() {
 	vmaInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 	return *this;
 }
 
-VulkanBuffer VulkanBufferBuilder::Build(vk::Device device, VmaAllocator allocator) {
-	outputBuffer.allocator = allocator;
+VulkanBuffer BufferBuilder::Build(size_t byteSize, const std::string& debugName) {
+	VulkanBuffer	outputBuffer;
 
-	vmaCreateBuffer(allocator, (VkBufferCreateInfo*)&vkInfo, &vmaInfo, (VkBuffer*)&(outputBuffer.buffer), &outputBuffer.allocationHandle, &outputBuffer.allocationInfo);
+	outputBuffer.size = byteSize;
+	vkInfo.size = byteSize;
+
+	outputBuffer.allocator = sourceAllocator;
+
+	vmaCreateBuffer(sourceAllocator, (VkBufferCreateInfo*)&vkInfo, &vmaInfo, (VkBuffer*)&(outputBuffer.buffer), &outputBuffer.allocationHandle, &outputBuffer.allocationInfo);
 
 	if (!debugName.empty()) {
-		Vulkan::SetDebugName(device, vk::ObjectType::eBuffer, Vulkan::GetVulkanHandle(outputBuffer.buffer), debugName);
+		SetDebugName(sourceDevice, vk::ObjectType::eBuffer, GetVulkanHandle(outputBuffer.buffer), debugName);
 	}
 
-	return std::move(outputBuffer);
+	return outputBuffer;
 }

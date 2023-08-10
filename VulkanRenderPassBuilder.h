@@ -6,15 +6,15 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanRenderer;
 	class VulkanTexture;
-	class VulkanRenderPassBuilder	{
+	class RenderPassBuilder	{
 	public:
-		VulkanRenderPassBuilder(const std::string& name);
-		~VulkanRenderPassBuilder() {}
+		RenderPassBuilder(vk::Device sourceDevice);
+		~RenderPassBuilder() {}
 
-		VulkanRenderPassBuilder& WithColourAttachment(
+		RenderPassBuilder& WithColourAttachment(
 			VulkanTexture* texture, 
 			bool clear	= true,
 			vk::ImageLayout startLayout = vk::ImageLayout::eColorAttachmentOptimal, 
@@ -22,7 +22,7 @@ namespace NCL::Rendering {
 			vk::ImageLayout endLayout	= vk::ImageLayout::eColorAttachmentOptimal
 		);
 
-		VulkanRenderPassBuilder& WithDepthAttachment(
+		RenderPassBuilder& WithDepthAttachment(
 			VulkanTexture* texture, 
 			bool clear	= true,
 			vk::ImageLayout startLayout = vk::ImageLayout::eDepthAttachmentOptimal,
@@ -30,7 +30,7 @@ namespace NCL::Rendering {
 			vk::ImageLayout endLayout	= vk::ImageLayout::eDepthAttachmentOptimal
 		);
 
-		VulkanRenderPassBuilder& WithDepthStencilAttachment(
+		RenderPassBuilder& WithDepthStencilAttachment(
 			VulkanTexture* texture,
 			bool clear = true,
 			vk::ImageLayout startLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
@@ -38,13 +38,13 @@ namespace NCL::Rendering {
 			vk::ImageLayout endLayout	= vk::ImageLayout::eDepthStencilAttachmentOptimal
 		);
 
-		vk::UniqueRenderPass Build(vk::Device renderer);
+		vk::UniqueRenderPass Build(const std::string& name = "");
 
 	protected:
 		std::vector<vk::AttachmentDescription>	allDescriptions;
 		std::vector<vk::AttachmentReference>		allReferences;
 		vk::AttachmentReference depthReference;
 		vk::SubpassDescription	subPass;
-		std::string debugName;
+		vk::Device sourceDevice;
 	};
 }

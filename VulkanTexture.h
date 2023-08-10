@@ -9,7 +9,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "../NCLCoreClasses/Texture.h"
 #include "SmartTypes.h"
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanRenderer;
 
 	class VulkanTexture : public Texture	{

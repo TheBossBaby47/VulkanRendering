@@ -8,7 +8,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 #pragma once
 #include "vma/vk_mem_alloc.h"
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	//A buffer, backed by memory we have allocated elsewhere
 	struct VulkanBuffer {
 		vk::Buffer	buffer;

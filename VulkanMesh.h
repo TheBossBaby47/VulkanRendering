@@ -9,7 +9,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "../NCLCoreClasses/Mesh.h"
 #include "VulkanBuffers.h"
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanMesh : public Mesh {
 	public:
 		friend class VulkanRenderer;

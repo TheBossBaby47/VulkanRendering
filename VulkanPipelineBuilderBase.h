@@ -7,15 +7,16 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "VulkanPipeline.h"
+#include "VulkanUtils.h"
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanRenderer;
 	class VulkanShader;
 
 	struct VulkanVertexSpecification;
 
 	template <class T, class P>
-	class VulkanPipelineBuilderBase	{
+	class PipelineBuilderBase	{
 	public:
 
 		T& WithLayout(vk::PipelineLayout pipeLayout) {
@@ -31,8 +32,11 @@ namespace NCL::Rendering {
 
 		T& WithDescriptorSetLayout(uint32_t slot, vk::DescriptorSetLayout layout) {
 			assert(slot < 32);
-			while (allLayouts.size() <= slot) {
-				allLayouts.push_back(vk::DescriptorSetLayout());
+			if (slot >= allLayouts.size()) {
+				vk::DescriptorSetLayout nullLayout = Vulkan::nullDescriptors[sourceDevice];
+				while (allLayouts.size() <= slot) {
+					allLayouts.push_back(nullLayout);
+				}
 			}
 			allLayouts[slot] = layout;
 			return (T&)*this;
@@ -47,18 +51,17 @@ namespace NCL::Rendering {
 			return pipelineCreate;
 		}
 	protected:
-		VulkanPipelineBuilderBase(const std::string& pipeName = "") : debugName(pipeName) {
-
+		PipelineBuilderBase(vk::Device device) {
+			sourceDevice = device;
 		}
-		~VulkanPipelineBuilderBase() {}
+		~PipelineBuilderBase() {}
 
 	protected:
 		P pipelineCreate;
-		vk::PipelineLayout layout;
+		vk::PipelineLayout	layout;
+		vk::Device			sourceDevice;
 
 		std::vector< vk::DescriptorSetLayout> allLayouts;
 		std::vector< vk::PushConstantRange> allPushConstants;
-
-		std::string debugName;
 	};
 }

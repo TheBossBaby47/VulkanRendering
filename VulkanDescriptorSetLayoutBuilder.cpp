@@ -13,8 +13,9 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
-vk::DescriptorSetLayoutBinding& VulkanDescriptorSetLayoutBuilder::AddDescriptors(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+vk::DescriptorSetLayoutBinding& DescriptorSetLayoutBuilder::AddDescriptors(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	vk::DescriptorSetLayoutBinding binding = vk::DescriptorSetLayoutBinding()
 		.setBinding((uint32_t)addedBindings.size())
 		.setDescriptorCount(count)
@@ -25,67 +26,67 @@ vk::DescriptorSetLayoutBinding& VulkanDescriptorSetLayoutBuilder::AddDescriptors
 	return addedBindings[addedBindings.size() - 1];
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eCombinedImageSampler);
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithSampledImages(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithSampledImages(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eSampledImage);
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithStorageImages(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithStorageImages(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageImage);
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eUniformBuffer);
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageBuffer);
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithDynamicUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDynamicUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eUniformBufferDynamic);
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithDynamicStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDynamicStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageBufferDynamic);
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithAccelStructures(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithAccelStructures(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eAccelerationStructureKHR);
 	return *this;
 }
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithDescriptors(vk::DescriptorType type, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDescriptors(vk::DescriptorType type, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(type);
 	return *this;
 }
 
 
-VulkanDescriptorSetLayoutBuilder& VulkanDescriptorSetLayoutBuilder::WithCreationFlags(vk::DescriptorSetLayoutCreateFlags flags) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithCreationFlags(vk::DescriptorSetLayoutCreateFlags flags) {
 	createInfo.flags |= flags;
 	return *this;
 }
 
-vk::UniqueDescriptorSetLayout VulkanDescriptorSetLayoutBuilder::Build(vk::Device device) {
+vk::UniqueDescriptorSetLayout DescriptorSetLayoutBuilder::Build(const std::string& debugName) {
 	createInfo.setBindings(addedBindings);
 	vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsInfo;
 	
 	bindingFlagsInfo.setBindingFlags(addedFlags);
 
 	createInfo.pNext = &bindingFlagsInfo;
-	vk::UniqueDescriptorSetLayout layout = std::move(device.createDescriptorSetLayoutUnique(createInfo));
+	vk::UniqueDescriptorSetLayout layout = std::move(sourceDevice.createDescriptorSetLayoutUnique(createInfo));
 	if (!debugName.empty()) {
-		Vulkan::SetDebugName(device, vk::ObjectType::eDescriptorSetLayout, Vulkan::GetVulkanHandle(*layout), debugName);
+		SetDebugName(sourceDevice, vk::ObjectType::eDescriptorSetLayout, GetVulkanHandle(*layout), debugName);
 	}
 	return layout;
 }

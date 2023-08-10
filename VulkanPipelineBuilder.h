@@ -9,39 +9,39 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "VulkanPipelineBuilderBase.h"
 #include "VulkanPipeline.h"
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanRenderer;
 	class VulkanShader;
 	using UniqueVulkanShader = std::unique_ptr<VulkanShader>;
 
 	struct VulkanVertexSpecification;
 
-	class VulkanPipelineBuilder	: public VulkanPipelineBuilderBase<VulkanPipelineBuilder, vk::GraphicsPipelineCreateInfo> {
+	class PipelineBuilder	: public PipelineBuilderBase<PipelineBuilder, vk::GraphicsPipelineCreateInfo> {
 	public:
-		VulkanPipelineBuilder(const std::string& debugName = "");
-		~VulkanPipelineBuilder() {}
+		PipelineBuilder(vk::Device device);
+		~PipelineBuilder() {}
 
-		VulkanPipelineBuilder& WithDepthState(vk::CompareOp op, bool depthEnabled, bool writeEnabled, bool stencilEnabled = false);
+		PipelineBuilder& WithDepthState(vk::CompareOp op, bool depthEnabled, bool writeEnabled, bool stencilEnabled = false);
 
-		VulkanPipelineBuilder& WithBlendState(vk::BlendFactor srcState, vk::BlendFactor dstState, bool enabled = true);
+		PipelineBuilder& WithBlendState(vk::BlendFactor srcState, vk::BlendFactor dstState, bool enabled = true);
 
-		VulkanPipelineBuilder& WithRaster(vk::CullModeFlagBits cullMode, vk::PolygonMode polyMode = vk::PolygonMode::eFill);
+		PipelineBuilder& WithRaster(vk::CullModeFlagBits cullMode, vk::PolygonMode polyMode = vk::PolygonMode::eFill);
 
-		VulkanPipelineBuilder& WithVertexInputState(const vk::PipelineVertexInputStateCreateInfo& spec);
+		PipelineBuilder& WithVertexInputState(const vk::PipelineVertexInputStateCreateInfo& spec);
 
-		VulkanPipelineBuilder& WithTessellationPatchVertexCount(uint32_t controlPointsPerPatch);
+		PipelineBuilder& WithTessellationPatchVertexCount(uint32_t controlPointsPerPatch);
 
-		VulkanPipelineBuilder& WithTopology(vk::PrimitiveTopology topology);
+		PipelineBuilder& WithTopology(vk::PrimitiveTopology topology);
 
-		VulkanPipelineBuilder& WithShader(const UniqueVulkanShader& shader);
+		PipelineBuilder& WithShader(const UniqueVulkanShader& shader);
 
-		VulkanPipelineBuilder& WithPass(vk::RenderPass& renderPass);
+		PipelineBuilder& WithPass(vk::RenderPass& renderPass);
 
-		VulkanPipelineBuilder& WithDepthStencilFormat(vk::Format combinedFormat);
-		VulkanPipelineBuilder& WithDepthFormat(vk::Format depthFormat);
-		VulkanPipelineBuilder& WithColourFormats(const std::vector<vk::Format>& formats);
+		PipelineBuilder& WithDepthStencilFormat(vk::Format combinedFormat);
+		PipelineBuilder& WithDepthFormat(vk::Format depthFormat);
+		PipelineBuilder& WithColourFormats(const std::vector<vk::Format>& formats);
 
-		VulkanPipeline	Build(vk::Device device, vk::PipelineCache cache = {});
+		VulkanPipeline	Build(const std::string& debugName = "", vk::PipelineCache cache = {});
 
 	protected:
 		vk::PipelineCacheCreateInfo					cacheCreate;

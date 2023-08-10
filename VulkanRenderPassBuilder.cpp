@@ -12,13 +12,14 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
-VulkanRenderPassBuilder::VulkanRenderPassBuilder(const std::string& name) {
+RenderPassBuilder::RenderPassBuilder(vk::Device device) {
 	subPass.setPDepthStencilAttachment(nullptr);
-	debugName = name;
+	sourceDevice = device;
 }
 
-VulkanRenderPassBuilder& VulkanRenderPassBuilder::WithColourAttachment(VulkanTexture* texture, bool clear, vk::ImageLayout startLayout, vk::ImageLayout useLayout,  vk::ImageLayout endLayout) {
+RenderPassBuilder& RenderPassBuilder::WithColourAttachment(VulkanTexture* texture, bool clear, vk::ImageLayout startLayout, vk::ImageLayout useLayout,  vk::ImageLayout endLayout) {
 	allDescriptions.emplace_back(
 		vk::AttachmentDescription()
 		.setInitialLayout(startLayout)
@@ -31,7 +32,7 @@ VulkanRenderPassBuilder& VulkanRenderPassBuilder::WithColourAttachment(VulkanTex
 	return *this;
 }
 
-VulkanRenderPassBuilder& VulkanRenderPassBuilder::WithDepthAttachment(VulkanTexture* texture, bool clear, vk::ImageLayout startLayout, vk::ImageLayout useLayout, vk::ImageLayout endLayout) {
+RenderPassBuilder& RenderPassBuilder::WithDepthAttachment(VulkanTexture* texture, bool clear, vk::ImageLayout startLayout, vk::ImageLayout useLayout, vk::ImageLayout endLayout) {
 	allDescriptions.emplace_back(
 		vk::AttachmentDescription()
 		.setInitialLayout(startLayout)
@@ -44,11 +45,11 @@ VulkanRenderPassBuilder& VulkanRenderPassBuilder::WithDepthAttachment(VulkanText
 	return *this;
 }
 
-VulkanRenderPassBuilder& VulkanRenderPassBuilder::WithDepthStencilAttachment(VulkanTexture* texture, bool clear, vk::ImageLayout startLayout, vk::ImageLayout useLayout, vk::ImageLayout endLayout) {
+RenderPassBuilder& RenderPassBuilder::WithDepthStencilAttachment(VulkanTexture* texture, bool clear, vk::ImageLayout startLayout, vk::ImageLayout useLayout, vk::ImageLayout endLayout) {
 	return WithDepthAttachment(texture, clear, startLayout, useLayout, endLayout); //we just get different default parameters!
 }
 
-vk::UniqueRenderPass VulkanRenderPassBuilder::Build(vk::Device device) {
+vk::UniqueRenderPass RenderPassBuilder::Build(const std::string& debugName) {
 	subPass.setColorAttachmentCount((uint32_t)allReferences.size())
 		.setPColorAttachments(allReferences.data())
 		.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics);
@@ -59,11 +60,11 @@ vk::UniqueRenderPass VulkanRenderPassBuilder::Build(vk::Device device) {
 		.setSubpassCount(1)
 		.setPSubpasses(&subPass);
 
-	vk::UniqueRenderPass pass = device.createRenderPassUnique(renderPassInfo);
+	vk::UniqueRenderPass pass = sourceDevice.createRenderPassUnique(renderPassInfo);
 
 	if (!debugName.empty()) {
-		Vulkan::SetDebugName(device, vk::ObjectType::eRenderPass, Vulkan::GetVulkanHandle(*pass), debugName);
+		SetDebugName(sourceDevice, vk::ObjectType::eRenderPass, GetVulkanHandle(*pass), debugName);
 	}
 
-	return pass;
+	return std::move(pass);
 }

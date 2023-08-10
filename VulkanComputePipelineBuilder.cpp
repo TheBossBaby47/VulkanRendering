@@ -11,25 +11,18 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
-VulkanComputePipelineBuilder::VulkanComputePipelineBuilder(const std::string& name) : VulkanPipelineBuilderBase(name){
+ComputePipelineBuilder::ComputePipelineBuilder(vk::Device device) : PipelineBuilderBase(device){
 }
 
-VulkanComputePipelineBuilder& VulkanComputePipelineBuilder::WithShader(UniqueVulkanCompute& compute) {
+ComputePipelineBuilder& ComputePipelineBuilder::WithShader(UniqueVulkanCompute& compute) {
 	compute->FillShaderStageCreateInfo(pipelineCreate);
 	return *this;
 }
 
-VulkanPipeline	VulkanComputePipelineBuilder::Build(vk::Device device, vk::PipelineCache cache) {
+VulkanPipeline	ComputePipelineBuilder::Build(const std::string& debugName, vk::PipelineCache cache) {
 	VulkanPipeline output;
-
-	//Patch any invalid descriptors to be empty
-	vk::DescriptorSetLayout nullLayout = Vulkan::nullDescriptors[device];
-	for (int i = 0; i < allLayouts.size(); ++i) {
-		if (!allLayouts[i]) {
-			allLayouts[i] = nullLayout;
-		}
-	}
 
 	vk::PipelineLayoutCreateInfo pipeLayoutCreate = vk::PipelineLayoutCreateInfo()
 		.setSetLayoutCount((uint32_t)allLayouts.size())
@@ -37,14 +30,14 @@ VulkanPipeline	VulkanComputePipelineBuilder::Build(vk::Device device, vk::Pipeli
 		.setPPushConstantRanges(allPushConstants.data())
 		.setPushConstantRangeCount((uint32_t)allPushConstants.size());
 
-	output.layout = device.createPipelineLayoutUnique(pipeLayoutCreate);
+	output.layout = sourceDevice.createPipelineLayoutUnique(pipeLayoutCreate);
 
 	pipelineCreate.setLayout(*output.layout);
 
-	output.pipeline = device.createComputePipelineUnique(cache, pipelineCreate).value;
+	output.pipeline = sourceDevice.createComputePipelineUnique(cache, pipelineCreate).value;
 
 	if (!debugName.empty()) {
-		Vulkan::SetDebugName(device, vk::ObjectType::ePipeline, Vulkan::GetVulkanHandle(*output.pipeline), debugName);
+		SetDebugName(sourceDevice, vk::ObjectType::ePipeline, GetVulkanHandle(*output.pipeline), debugName);
 	}
 
 	return output;

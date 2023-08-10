@@ -9,30 +9,29 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "../NCLCoreClasses/Shader.h"
 #include "SmartTypes.h"
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanShader;
-	class VulkanShaderBuilder {
+	class ShaderBuilder {
 	public:
-		VulkanShaderBuilder(const std::string& name = "") { debugName = name; };
-		~VulkanShaderBuilder()	{};
+		ShaderBuilder(vk::Device device) { sourceDevice = device; };
+		~ShaderBuilder()	{};
 
-		VulkanShaderBuilder& WithMeshBinary(const std::string& name, const std::string& entry = "main");
+		ShaderBuilder& WithMeshBinary(const std::string& name, const std::string& entry = "main");
 
-		VulkanShaderBuilder& WithVertexBinary(const std::string& name, const std::string& entry = "main");
-		VulkanShaderBuilder& WithFragmentBinary(const std::string& name, const std::string& entry = "main");
-		VulkanShaderBuilder& WithGeometryBinary(const std::string& name, const std::string& entry = "main");
-		VulkanShaderBuilder& WithTessControlBinary(const std::string& name, const std::string& entry = "main");
-		VulkanShaderBuilder& WithTessEvalBinary(const std::string& name, const std::string& entry = "main");
+		ShaderBuilder& WithVertexBinary(const std::string& name, const std::string& entry = "main");
+		ShaderBuilder& WithFragmentBinary(const std::string& name, const std::string& entry = "main");
+		ShaderBuilder& WithGeometryBinary(const std::string& name, const std::string& entry = "main");
+		ShaderBuilder& WithTessControlBinary(const std::string& name, const std::string& entry = "main");
+		ShaderBuilder& WithTessEvalBinary(const std::string& name, const std::string& entry = "main");
 
-		VulkanShaderBuilder& AddBinary(ShaderStages stage, const std::string& name, const std::string& entry = "main");
+		ShaderBuilder& AddBinary(ShaderStages stage, const std::string& name, const std::string& entry = "main");
 
-		UniqueVulkanShader Build(vk::Device device);
+		UniqueVulkanShader Build(const std::string& debugName = "");
 
 	protected:
 		std::string shaderFiles[(int)ShaderStages::MAXSIZE];
 		std::string entryPoints[(int)ShaderStages::MAXSIZE];
-		std::string debugName;
-
+		vk::Device sourceDevice;
 
 	};
 }

@@ -7,43 +7,45 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanRenderer;
 
-	class VulkanDescriptorSetLayoutBuilder	{
+	class DescriptorSetLayoutBuilder {
 	public:
-		VulkanDescriptorSetLayoutBuilder(const std::string& name = "") { 
-			debugName = name; 
-			usingBindless = false; 
-			usingDescriptorBuffer = false;
+		DescriptorSetLayoutBuilder(vk::Device device) {
+			sourceDevice = device;
+			//debugName = name; 
+			//usingBindless = false; 
+			//usingDescriptorBuffer = false;
 		};
-		~VulkanDescriptorSetLayoutBuilder() {};
+		~DescriptorSetLayoutBuilder() {};
 
-		VulkanDescriptorSetLayoutBuilder& WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 		
-		VulkanDescriptorSetLayoutBuilder& WithSampledImages(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
-		VulkanDescriptorSetLayoutBuilder& WithStorageImages(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithSampledImages(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithStorageImages(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 
-		VulkanDescriptorSetLayoutBuilder& WithUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
-		VulkanDescriptorSetLayoutBuilder& WithStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 
-		VulkanDescriptorSetLayoutBuilder& WithDynamicUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
-		VulkanDescriptorSetLayoutBuilder& WithDynamicStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithDynamicUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithDynamicStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 
-		VulkanDescriptorSetLayoutBuilder& WithAccelStructures(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithAccelStructures(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 
-		VulkanDescriptorSetLayoutBuilder& WithDescriptors(vk::DescriptorType type, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithDescriptors(vk::DescriptorType type, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 
-		VulkanDescriptorSetLayoutBuilder& WithCreationFlags(vk::DescriptorSetLayoutCreateFlags flags);
+		DescriptorSetLayoutBuilder& WithCreationFlags(vk::DescriptorSetLayoutCreateFlags flags);
 
-		vk::UniqueDescriptorSetLayout Build(vk::Device device);
+		vk::UniqueDescriptorSetLayout Build(const std::string& debugName = "");
 
 	protected:
 		vk::DescriptorSetLayoutBinding& AddDescriptors(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 
-		std::string	debugName;
-		bool usingBindless;
-		bool usingDescriptorBuffer;
+		vk::Device sourceDevice;
+
+		//bool usingBindless;
+		//bool usingDescriptorBuffer;
 		std::vector< vk::DescriptorSetLayoutBinding>	addedBindings;
 		std::vector< vk::DescriptorBindingFlags>		addedFlags;
 

@@ -10,21 +10,17 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "VulkanPipelineBuilderBase.h"
 #include "SmartTypes.h"
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanCompute;
 
-	class VulkanComputePipelineBuilder : public VulkanPipelineBuilderBase<VulkanComputePipelineBuilder, vk::ComputePipelineCreateInfo>	{
+	class ComputePipelineBuilder : public PipelineBuilderBase<ComputePipelineBuilder, vk::ComputePipelineCreateInfo>	{
 	public:
-		VulkanComputePipelineBuilder(const std::string& name = "");
-		~VulkanComputePipelineBuilder() {}
+		ComputePipelineBuilder(vk::Device device);
+		~ComputePipelineBuilder() {}
 
-		//VulkanComputePipelineBuilder& WithLayout(vk::PipelineLayout layout);
+		ComputePipelineBuilder& WithShader(UniqueVulkanCompute& shader);
 
-		//VulkanComputePipelineBuilder& WithPushConstant(vk::ShaderStageFlags flags, uint32_t offset, uint32_t size);
-		//VulkanComputePipelineBuilder& WithDescriptorSetLayout(uint32_t slot, vk::DescriptorSetLayout layout);
-		VulkanComputePipelineBuilder& WithShader(UniqueVulkanCompute& shader);
-
-		VulkanPipeline	Build(vk::Device device, vk::PipelineCache cache = {});
+		VulkanPipeline	Build(const std::string& debugName = "", vk::PipelineCache cache = {});
 
 	protected:
 	};

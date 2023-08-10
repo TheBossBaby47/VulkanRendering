@@ -7,19 +7,17 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #include "VulkanUtils.h"
 #include "VulkanTexture.h"
+#include "VulkanBuffers.h"
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
 std::map<vk::Device, vk::DescriptorSetLayout > NCL::Rendering::Vulkan::nullDescriptors;
 
 vk::DynamicLoader NCL::Rendering::Vulkan::dynamicLoader;
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
-
-vk::ClearColorValue Vulkan::ClearColour(float r, float g, float b, float a) {
-	return vk::ClearColorValue(std::array<float, 4>{r, g, b, a});
-}
 
 void Vulkan::SetDebugName(vk::Device device, vk::ObjectType t, uint64_t handle, const std::string& debugName) {
 	device.setDebugUtilsObjectNameEXT(
@@ -114,10 +112,6 @@ void Vulkan::TransitionSamplerToDepth(vk::CommandBuffer  buffer, vk::Image t, bo
 		vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eEarlyFragmentTests);
 }
 
-void Vulkan::DispatchCompute(vk::CommandBuffer  to, unsigned int xCount, unsigned int yCount, unsigned int zCount) {
-	to.dispatch(xCount, yCount, zCount);
-}
-
 bool Vulkan::MessageAssert(bool condition, const char* msg) {
 	if (!condition) {
 		std::cerr << msg << "\n";
@@ -125,27 +119,40 @@ bool Vulkan::MessageAssert(bool condition, const char* msg) {
 	return condition;
 }
 
-vk::CommandBuffer	Vulkan::BeginCmdBuffer(vk::Device device, vk::CommandPool fromPool, const std::string& debugName) {
-	vk::CommandBufferAllocateInfo bufferInfo = vk::CommandBufferAllocateInfo(fromPool, vk::CommandBufferLevel::ePrimary, 1);
-
-	auto buffers = device.allocateCommandBuffers(bufferInfo); //Func returns a vector!
-
-	if (!debugName.empty()) {
-		Vulkan::SetDebugName(device, vk::ObjectType::eCommandBuffer, Vulkan::GetVulkanHandle(buffers[0]), debugName);
-	}
-	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo();
-	buffers[0].begin(beginInfo);
-	return buffers[0];
+void	Vulkan::CmdBufferResetBegin(vk::CommandBuffer  buffer) {
+	buffer.reset();
+	buffer.begin(vk::CommandBufferBeginInfo());
 }
 
-void	Vulkan::SubmitCmdBuffer(vk::CommandBuffer  buffer, vk::Queue queue, vk::Fence fence, vk::Semaphore waitSemaphore, vk::Semaphore signalSempahore) {
-	if (buffer) {
-		buffer.end();
+void	Vulkan::CmdBufferResetBegin(const vk::UniqueCommandBuffer&  buffer) {
+	buffer->reset();
+	buffer->begin(vk::CommandBufferBeginInfo());
+}
+
+vk::UniqueCommandBuffer	Vulkan::CmdBufferCreate(vk::Device device, vk::CommandPool fromPool, const std::string& debugName) {
+	vk::CommandBufferAllocateInfo bufferInfo = vk::CommandBufferAllocateInfo(fromPool, vk::CommandBufferLevel::ePrimary, 1);
+
+	auto buffers = device.allocateCommandBuffersUnique(bufferInfo); //Func returns a vector!
+
+	if (!debugName.empty()) {
+		Vulkan::SetDebugName(device, vk::ObjectType::eCommandBuffer, Vulkan::GetVulkanHandle(*buffers[0]), debugName);
 	}
-	else {
+	return std::move(buffers[0]);
+}
+
+vk::UniqueCommandBuffer	Vulkan::CmdBufferBegin(vk::Device device, vk::CommandPool fromPool, const std::string& debugName) {
+	vk::UniqueCommandBuffer buffer = CmdBufferCreate(device, fromPool, debugName);
+	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo();
+	buffer->begin(beginInfo);
+	return std::move(buffer);
+}
+
+void	Vulkan::CmdBufferEndSubmit(vk::CommandBuffer  buffer, vk::Queue queue, vk::Fence fence, vk::Semaphore waitSemaphore, vk::Semaphore signalSempahore) {
+	if (!buffer) {
 		std::cout << __FUNCTION__ << " Submitting invalid buffer?\n";
 		return;
 	}
+	buffer.end();
 
 	vk::SubmitInfo submitInfo = vk::SubmitInfo();
 	submitInfo.setCommandBufferCount(1);
@@ -166,14 +173,96 @@ void	Vulkan::SubmitCmdBuffer(vk::CommandBuffer  buffer, vk::Queue queue, vk::Fen
 	queue.submit(submitInfo, fence);
 }
 
-void		Vulkan::SubmitCmdBufferWait(vk::CommandBuffer  buffer, vk::Device device, vk::Queue queue) {
+void		Vulkan::CmdBufferEndSubmitWait(vk::CommandBuffer  buffer, vk::Device device, vk::Queue queue) {
 	vk::Fence fence = device.createFence({});
 
-	SubmitCmdBuffer(buffer, queue, fence);
+	CmdBufferEndSubmit(buffer, queue, fence);
 
 	if (device.waitForFences(1, &fence, true, UINT64_MAX) != vk::Result::eSuccess) {
 		std::cout << __FUNCTION__ << " Device queue submission taking too long?\n";
 	};
 
 	device.destroyFence(fence);
+}
+
+void	Vulkan::WriteImageDescriptor(vk::Device device, vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
+	auto imageInfo = vk::DescriptorImageInfo()
+		.setSampler(sampler)
+		.setImageView(view)
+		.setImageLayout(layout);
+
+	auto descriptorWrite = vk::WriteDescriptorSet()
+		.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+		.setDstSet(set)
+		.setDstBinding(bindingNum)
+		.setDstArrayElement(subIndex)
+		.setDescriptorCount(1)
+		.setPImageInfo(&imageInfo);
+
+	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+}
+
+void	Vulkan::WriteBufferDescriptor(vk::Device device, vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset, size_t range) {
+	auto descriptorInfo = vk::DescriptorBufferInfo()
+		.setBuffer(buff)
+		.setOffset(offset)
+		.setRange(range > 0 ? range : VK_WHOLE_SIZE);
+
+	auto descriptorWrites = vk::WriteDescriptorSet()
+		.setDescriptorType(bufferType)
+		.setDstSet(set)
+		.setDstBinding(bindingSlot)
+		.setDescriptorCount(1)
+		.setPBufferInfo(&descriptorInfo);
+
+	device.updateDescriptorSets(1, &descriptorWrites, 0, nullptr);
+}
+
+void	Vulkan::WriteTLASDescriptor(vk::Device device, vk::DescriptorSet set, int bindingSlot, vk::AccelerationStructureKHR tlas) {
+	auto descriptorInfo = vk::WriteDescriptorSetAccelerationStructureKHR()
+		.setAccelerationStructureCount(1)
+		.setAccelerationStructures(tlas);
+
+	auto descriptorWrites = vk::WriteDescriptorSet()
+		.setDescriptorType(vk::DescriptorType::eAccelerationStructureKHR)
+		.setDstSet(set)
+		.setDstBinding(bindingSlot)
+		.setDescriptorCount(1)
+		.setPNext(&descriptorInfo);
+
+	device.updateDescriptorSets(1, &descriptorWrites, 0, nullptr);
+}
+
+void	Vulkan::WriteStorageImageDescriptor(vk::Device device, vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
+	auto imageInfo = vk::DescriptorImageInfo()
+		.setSampler(sampler)
+		.setImageView(view)
+		.setImageLayout(layout);
+
+	auto descriptorWrite = vk::WriteDescriptorSet()
+		.setDescriptorType(vk::DescriptorType::eStorageImage)
+		.setDstSet(set)
+		.setDstBinding(bindingNum)
+		.setDstArrayElement(subIndex)
+		.setDescriptorCount(1)
+		.setPImageInfo(&imageInfo);
+
+	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+}
+
+vk::UniqueDescriptorSet Vulkan::BuildUniqueDescriptorSet(vk::Device device, vk::DescriptorSetLayout  layout, vk::DescriptorPool pool, uint32_t variableDescriptorCount) {
+	vk::DescriptorSetAllocateInfo allocateInfo = vk::DescriptorSetAllocateInfo()
+		.setDescriptorPool(pool)
+		.setDescriptorSetCount(1)
+		.setPSetLayouts(&layout);
+
+	vk::DescriptorSetVariableDescriptorCountAllocateInfoEXT variableDescriptorInfo;
+
+	if (variableDescriptorCount > 0) {
+		variableDescriptorInfo.setDescriptorSetCount(1);
+		variableDescriptorInfo.pDescriptorCounts = &variableDescriptorCount;
+		allocateInfo.setPNext((const void*)&variableDescriptorInfo);
+	}
+
+	return std::move(device.allocateDescriptorSetsUnique(allocateInfo)[0]);
 }

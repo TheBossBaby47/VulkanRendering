@@ -8,7 +8,9 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "VulkanCompute.h"
 #include "Assets.h"
 
-using namespace NCL::Rendering;
+using namespace NCL;
+using namespace Rendering;
+using namespace Vulkan;
 
 VulkanCompute::VulkanCompute(vk::Device device, const std::string& filename) : localThreadSize{ 0,0,0 } {
 	char* data;

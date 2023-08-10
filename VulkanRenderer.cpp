@@ -21,6 +21,7 @@ using namespace NCL::Win32Code;
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
 vk::PhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
 
@@ -50,7 +51,6 @@ VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
 
 VulkanRenderer::~VulkanRenderer() {
 	device.waitIdle();
-	//vkDeviceWaitIdle(device);
 	depthBuffer.reset();
 
 	for (auto& i : swapChainList) {
@@ -71,8 +71,6 @@ VulkanRenderer::~VulkanRenderer() {
 	device.destroyRenderPass(defaultRenderPass);
 	device.destroyPipelineCache(pipelineCache);
 	device.destroy(); //Destroy everything except instance before this gets destroyed!
-
-	//delete Vulkan::dispatcher;
 
 	instance.destroySurfaceKHR(surface);
 	instance.destroy();
@@ -113,13 +111,8 @@ bool VulkanRenderer::InitInstance() {
 		.setPpEnabledLayerNames(instanceLayers.data());
 
 	instance = vk::createInstance(instanceInfo);
-	//Vulkan::dispatcher = new vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr); //Instance dispatcher
-	//VULKAN_HPP_DISPATCH_LOADER_DYNAMIC
-
 
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
-
-	//Vulkan::staticDispatcher = new vk::DispatchLoaderStatic(instance, vkGetInstanceProcAddr); //Instance dispatcher 
 
 	return true;
 }
@@ -204,9 +197,6 @@ bool VulkanRenderer::InitGPUDevice() {
 
 	deviceMemoryProperties = gpu.getMemoryProperties();
 	deviceProperties = gpu.getProperties();
-
-	//delete Vulkan::dispatcher;
-	//Vulkan::dispatcher = new vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr , device); //DEVICE dispatcher
 
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
 	return true;
@@ -313,7 +303,7 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 
 		chain->image = i;
 
-		Vulkan::ImageTransitionBarrier(cmdBuffer, i, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput);
+		ImageTransitionBarrier(cmdBuffer, i, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
 		chain->view = device.createImageView(viewCreate);
 
@@ -350,67 +340,6 @@ void	VulkanRenderer::InitMemoryAllocator() {
 
 	allocatorInfo.pVulkanFunctions = &funcs;
 	vmaCreateAllocator(&allocatorInfo, &memoryAllocator);
-}
-
-vk::CommandBuffer	VulkanRenderer::BeginCmdBuffer(CommandBufferType type, const std::string& debugName) {
-	return BeginCmdBuffer(commandPools[(uint32_t)type], debugName);
-}
-
-vk::CommandBuffer	VulkanRenderer::BeginCmdBuffer(vk::CommandPool fromPool, const std::string& debugName) {
-	vk::CommandBufferAllocateInfo bufferInfo = vk::CommandBufferAllocateInfo(fromPool, vk::CommandBufferLevel::ePrimary, 1);
-
-	auto buffers = device.allocateCommandBuffers(bufferInfo); //Func returns a vector!
-
-	if (!debugName.empty()) {
-		Vulkan::SetDebugName(device, vk::ObjectType::eCommandBuffer, Vulkan::GetVulkanHandle(buffers[0]), debugName);
-	}
-	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo();
-	buffers[0].begin(beginInfo);
-	return buffers[0];
-}
-
-void		VulkanRenderer::SubmitCmdBufferWait(vk::CommandBuffer  buffer, CommandBufferType type) {
-	vk::Fence fence = device.createFence({});
-		
-	SubmitCmdBuffer(buffer,type, fence);
-
-	if (device.waitForFences(1, &fence, true, UINT64_MAX) != vk::Result::eSuccess) {
-		std::cout << __FUNCTION__ << " Device queue submission taking too long?\n";
-	};
-
-	device.destroyFence(fence);
-}
-
-void	VulkanRenderer::SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferType type, vk::Fence fence, vk::Semaphore waitSemaphore, vk::Semaphore signalSempahore) {
-	if (buffer) {		
-		buffer.end();
-	}
-	else {
-		std::cout << __FUNCTION__ << " Submitting invalid buffer?\n";
-		return;
-	}
-
-	vk::SubmitInfo submitInfo = vk::SubmitInfo();
-	submitInfo.setCommandBufferCount(1);
-	submitInfo.setPCommandBuffers(&buffer);
-
-	vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eTopOfPipe;
-
-	if (waitSemaphore) {
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &waitSemaphore;
-		submitInfo.pWaitDstStageMask = &waitStage;
-	}
-	if (signalSempahore) {
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &signalSempahore;
-	}
-
-	queueTypes[(uint32_t)type].submit(submitInfo, fence);
-}
-
-void VulkanRenderer::SubmitCmdBuffer(const vk::SubmitInfo& info, CommandBufferType type) {
-	queueTypes[(uint32_t)type].submit(info, {});
 }
 
 bool VulkanRenderer::InitDeviceQueueIndices() {
@@ -482,21 +411,19 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 	defaultClearValues[0] = vk::ClearValue(vk::ClearColorValue(std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.0f}));
 	defaultClearValues[1] = vk::ClearValue(vk::ClearDepthStencilValue(1.0f, 0));
 
-	vk::CommandBuffer cmds = BeginCmdBuffer(CommandBufferType::Graphics);
+	vk::UniqueCommandBuffer cmds = CmdBufferBegin(device, commandPools[(uint32_t)CommandBufferType::Graphics], "Window resize cmds");
 
 	std::cout << __FUNCTION__ << " New dimensions: " << windowSize.x << " , " << windowSize.y << "\n";
-	//vkDeviceWaitIdle(device);
 
 	device.waitIdle();
 
 	depthBuffer = VulkanTexture::CreateDepthTexture(this,(int)hostWindow.GetScreenSize().x, (int)hostWindow.GetScreenSize().y);
 	
-	numFrameBuffers = InitBufferChain(cmds);
+	numFrameBuffers = InitBufferChain(*cmds);
 
 	InitDefaultRenderPass();
 	CreateDefaultFrameBuffers();
 
-	//vkDeviceWaitIdle(device);
 	device.waitIdle();
 
 	vk::Semaphore	presentSempaphore = device.createSemaphore(vk::SemaphoreCreateInfo());
@@ -508,8 +435,7 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 	device.destroyFence(fence);
 
 	CompleteResize();
-
-	SubmitCmdBufferWait(cmds, CommandBufferType::Graphics);
+	CmdBufferEndSubmitWait(*cmds, device, queueTypes[(uint32_t)CommandBufferType::Graphics]);
 }
 
 void VulkanRenderer::CompleteResize() {
@@ -517,9 +443,6 @@ void VulkanRenderer::CompleteResize() {
 }
 
 void	VulkanRenderer::BeginFrame() {
-	//if (hostWindow.IsMinimised()) {
-	//	defaultCmdBuffer = BeginCmdBuffer();
-	//}
 	frameCmds.reset({});
 
 	frameCmds.begin(vk::CommandBufferBeginInfo());
@@ -527,7 +450,7 @@ void	VulkanRenderer::BeginFrame() {
 	frameCmds.setScissor(0, 1, &defaultScissor);
 
 	if (autoTransitionFrameBuffer) {
-		Vulkan::TransitionPresentToColour(frameCmds, swapChainList[currentSwap]->image);
+		TransitionPresentToColour(frameCmds, swapChainList[currentSwap]->image);
 	}
 	if (autoBeginDynamicRendering) {
 		BeginDefaultRendering(frameCmds);
@@ -536,13 +459,14 @@ void	VulkanRenderer::BeginFrame() {
 
 void	VulkanRenderer::EndFrame() {
 	if (autoBeginDynamicRendering) {
-		EndRendering(frameCmds);
+		frameCmds.endRendering();
 	}
+
 	if (hostWindow.IsMinimised()) {
-		SubmitCmdBufferWait(frameCmds, CommandBufferType::Graphics);
+		CmdBufferEndSubmitWait(frameCmds, device, queueTypes[(uint32_t)CommandBufferType::Graphics]);
 	}
 	else {
-		SubmitCmdBuffer(frameCmds, CommandBufferType::Graphics);
+		CmdBufferEndSubmit(frameCmds, queueTypes[(uint32_t)CommandBufferType::Graphics]);
 	}
 }
 
@@ -551,14 +475,15 @@ void VulkanRenderer::SwapBuffers() {
 	vk::UniqueFence		presentFence;
 
 	if (!hostWindow.IsMinimised()) {
-		vk::CommandBuffer cmds = BeginCmdBuffer(CommandBufferType::Graphics);
+		vk::CommandPool gfxPool		= commandPools[(uint32_t)CommandBufferType::Graphics];
+		vk::Queue		gfxQueue	= queueTypes[(uint32_t)CommandBufferType::Graphics];
 
-		Vulkan::TransitionColourToPresent(cmds, swapChainList[currentSwap]->image);
+		vk::UniqueCommandBuffer cmds = CmdBufferBegin(device, gfxPool, "Window swap cmds");
 
-		SubmitCmdBufferWait(cmds, CommandBufferType::Graphics);
-		device.freeCommandBuffers(commandPools[(uint32_t)CommandBufferType::Graphics], cmds);
+		TransitionColourToPresent(*cmds, swapChainList[currentSwap]->image);
+		CmdBufferEndSubmitWait(*cmds, device, gfxQueue);
 
-		vk::Result presentResult = queueTypes[(uint32_t)CommandBufferType::Graphics].presentKHR(vk::PresentInfoKHR(0, nullptr, 1, &swapChain, &currentSwap, nullptr));
+		vk::Result presentResult = gfxQueue.presentKHR(vk::PresentInfoKHR(0, nullptr, 1, &swapChain, &currentSwap, nullptr));
 
 		presentSempaphore = device.createSemaphoreUnique(vk::SemaphoreCreateInfo());
 		presentFence	  = device.createFenceUnique(vk::FenceCreateInfo());
@@ -657,118 +582,55 @@ bool VulkanRenderer::CreateDefaultFrameBuffers() {
 	return true;
 }
 
-void	VulkanRenderer::InitDefaultDescriptorPool() {
-	int maxSets = 128; //how many times can we ask the pool for a descriptor set?
+void	VulkanRenderer::InitDefaultDescriptorPool(uint32_t maxSets) {
 	vk::DescriptorPoolSize poolSizes[] = {
-		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 128),
-		vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 128),
-		vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 128),
-		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, 128),
-		vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, 128),
-		vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, 128),
-		vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, 128)
+		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, maxSets),
+		vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, maxSets),
+		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, maxSets),
+		vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, maxSets),		
+		
+		vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, maxSets),
+		vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, maxSets),
+		vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, maxSets),
+
+		vk::DescriptorPoolSize(vk::DescriptorType::eAccelerationStructureKHR, maxSets),
 	};
+
+	uint32_t poolCount = sizeof(poolSizes) / sizeof(vk::DescriptorPoolSize);
 
 	vk::DescriptorPoolCreateInfo poolCreate;
 	poolCreate.setPoolSizeCount(sizeof(poolSizes) / sizeof(vk::DescriptorPoolSize));
 	poolCreate.setPPoolSizes(poolSizes);
-	poolCreate.setMaxSets(maxSets);
+	poolCreate.setMaxSets(maxSets * poolCount);
 	poolCreate.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
 
 	defaultDescriptorPool = device.createDescriptorPool(poolCreate);
 }
 
-void	VulkanRenderer::WriteImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
-	auto imageInfo = vk::DescriptorImageInfo()
-		.setSampler(sampler)
-		.setImageView(view)
-		.setImageLayout(layout);
-
-	auto descriptorWrite = vk::WriteDescriptorSet()
-		.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-		.setDstSet(set)
-		.setDstBinding(bindingNum)
-		.setDstArrayElement(subIndex)
-		.setDescriptorCount(1)
-		.setPImageInfo(&imageInfo);
-
-	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
-}
-
-void	VulkanRenderer::WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset, size_t range) {
-	auto descriptorInfo = vk::DescriptorBufferInfo()
-		.setBuffer(buff)
-		.setOffset(offset)
-		.setRange(range);
-
-	auto descriptorWrites = vk::WriteDescriptorSet()
-		.setDescriptorType(bufferType)
-		.setDstSet(set)
-		.setDstBinding(bindingSlot)
-		.setDescriptorCount(1)
-		.setPBufferInfo(&descriptorInfo);
-
-	device.updateDescriptorSets(1, &descriptorWrites, 0, nullptr);
-}
-
-void VulkanRenderer::WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, const VulkanBuffer& data, size_t offset, size_t range) {
-	WriteBufferDescriptor(set, bindingSlot, bufferType, data.buffer, offset, range == 0 ? data.size : range);
-}
-
-void	VulkanRenderer::WriteTLASDescriptor(vk::DescriptorSet set, int bindingSlot, vk::AccelerationStructureKHR tlas) {
-	auto descriptorInfo = vk::WriteDescriptorSetAccelerationStructureKHR()
-		.setAccelerationStructureCount(1)
-		.setAccelerationStructures(tlas);
-
-	auto descriptorWrites = vk::WriteDescriptorSet()
-		.setDescriptorType(vk::DescriptorType::eAccelerationStructureKHR)
-		.setDstSet(set)
-		.setDstBinding(bindingSlot)
-		.setDescriptorCount(1)
-		.setPNext(&descriptorInfo);
-
-	device.updateDescriptorSets(1, &descriptorWrites, 0, nullptr);
-}
-
-void	VulkanRenderer::WriteStorageImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
-	auto imageInfo = vk::DescriptorImageInfo()
-		.setSampler(sampler)
-		.setImageView(view)
-		.setImageLayout(layout);
-
-	auto descriptorWrite = vk::WriteDescriptorSet()
-		.setDescriptorType(vk::DescriptorType::eStorageImage)
-		.setDstSet(set)
-		.setDstBinding(bindingNum)
-		.setDstArrayElement(subIndex)
-		.setDescriptorCount(1)
-		.setPImageInfo(&imageInfo);
-
-	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
-}
-
-
 vk::UniqueDescriptorSet VulkanRenderer::BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool, uint32_t variableDescriptorCount) {
 	if (!pool) {
 		pool = defaultDescriptorPool;
 	}
-	vk::DescriptorSetAllocateInfo allocateInfo = vk::DescriptorSetAllocateInfo()
-		.setDescriptorPool(pool)
-		.setDescriptorSetCount(1)
-		.setPSetLayouts(&layout);
-
-	vk::DescriptorSetVariableDescriptorCountAllocateInfoEXT variableDescriptorInfo;
-
-	if (variableDescriptorCount > 0) {
-		variableDescriptorInfo.setDescriptorSetCount(1);
-		variableDescriptorInfo.pDescriptorCounts = &variableDescriptorCount;
-		allocateInfo.setPNext((const void*)&variableDescriptorInfo);
-	}
-
-	return std::move(device.allocateDescriptorSetsUnique(allocateInfo)[0]);
+	return Vulkan::BuildUniqueDescriptorSet(GetDevice(), layout, pool, variableDescriptorCount);
 }
 
-void VulkanRenderer::SubmitDrawCallLayer(const VulkanMesh& m, unsigned int layer, vk::CommandBuffer  to, int instanceCount) {
+void	VulkanRenderer::WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset, size_t range) {
+	Vulkan::WriteBufferDescriptor(GetDevice(), set, bindingSlot, bufferType, buff, offset, range);
+}
+
+void	VulkanRenderer::WriteImageDescriptor(vk::DescriptorSet set, int bindingSlot, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
+	Vulkan::WriteImageDescriptor(GetDevice(), set, bindingSlot, subIndex, view, sampler, layout);
+}
+
+void	VulkanRenderer::WriteStorageImageDescriptor(vk::DescriptorSet set, int bindingSlot, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
+	Vulkan::WriteStorageImageDescriptor(GetDevice(), set, bindingSlot, subIndex, view, sampler, layout);
+}
+
+void	VulkanRenderer::WriteTLASDescriptor(vk::DescriptorSet set, int bindingSlot, vk::AccelerationStructureKHR tlas) {
+	Vulkan::WriteTLASDescriptor(GetDevice(), set, bindingSlot, tlas);
+}
+
+void VulkanRenderer::DrawMeshLayer(const VulkanMesh& m, unsigned int layer, vk::CommandBuffer  to, int instanceCount) {
 	VkDeviceSize baseOffset = 0;
 
 	const SubMesh* sm = m.GetSubMesh(layer);
@@ -783,7 +645,7 @@ void VulkanRenderer::SubmitDrawCallLayer(const VulkanMesh& m, unsigned int layer
 	}
 }
 
-void VulkanRenderer::SubmitDrawCall(vk::CommandBuffer  to, const VulkanMesh& m, int instanceCount) {
+void VulkanRenderer::DrawMesh(vk::CommandBuffer  to, const VulkanMesh& m, int instanceCount) {
 	VkDeviceSize baseOffset = 0;
 
 	m.BindToCommandBuffer(to);
@@ -811,7 +673,7 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 		.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
 		.setLoadOp(vk::AttachmentLoadOp::eClear)
 		.setStoreOp(vk::AttachmentStoreOp::eStore)
-		.setClearValue(Vulkan::ClearColour(0.2f, 0.2f, 0.2f, 1.0f));
+		.setClearValue(vk::ClearColorValue(0.2f, 0.2f, 0.2f, 1.0f));
 
 	vk::RenderingAttachmentInfoKHR depthAttachment;
 	depthAttachment.setImageView(depthBuffer->GetDefaultView())
@@ -829,10 +691,6 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 	cmds.beginRendering(renderInfo);
 	cmds.setViewport(0, 1, &defaultViewport);
 	cmds.setScissor(0, 1, &defaultScissor);
-}
-
-void	VulkanRenderer::EndRendering(vk::CommandBuffer  cmds) {
-	cmds.endRendering();
 }
 
 vk::Format VulkanRenderer::GetDepthFormat() const {

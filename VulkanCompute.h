@@ -7,7 +7,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanCompute	{
 	public:
 		VulkanCompute(vk::Device sourceDevice, const std::string& filename);

@@ -14,7 +14,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "vma/vk_mem_alloc.h"
 using std::string;
 
-namespace NCL::Rendering {
+namespace NCL::Rendering::Vulkan {
 	class VulkanMesh;
 	class VulkanShader;
 	class VulkanCompute;
@@ -46,34 +46,22 @@ namespace NCL::Rendering {
 
 		virtual void	CompleteResize();
 		virtual void	InitDefaultRenderPass();
-		virtual void	InitDefaultDescriptorPool();
+		virtual void	InitDefaultDescriptorPool(uint32_t maxSets = 128);
 
-		void SubmitDrawCall(vk::CommandBuffer  to, const VulkanMesh& m, int instanceCount = 1);
-		void SubmitDrawCallLayer(const VulkanMesh& m, unsigned int layer, vk::CommandBuffer  to, int instanceCount = 1);
+		void DrawMesh(vk::CommandBuffer  to, const VulkanMesh& m, int instanceCount = 1);
+		void DrawMeshLayer(const VulkanMesh& m, unsigned int layer, vk::CommandBuffer  to, int instanceCount = 1);
 
 		vk::UniqueDescriptorSet BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool = {}, uint32_t variableDescriptorCount = 0);
-
-
-		void	WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset, size_t range);
-
-		void	WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, const VulkanBuffer& data, size_t offset = 0, size_t range = 0);
+		void	WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset = 0, size_t range = 0);
 		void	WriteImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
-		
 		void	WriteStorageImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
 		void	WriteTLASDescriptor(vk::DescriptorSet set, int bindingSlot, vk::AccelerationStructureKHR tlas);
 
 
-		vk::CommandBuffer	BeginCmdBuffer(CommandBufferType type = CommandBufferType::Graphics, const std::string& debugName = "");
 
-		void		SubmitCmdBufferWait(vk::CommandBuffer buffer, CommandBufferType type);
 
-		void		SubmitCmdBuffer(const vk::SubmitInfo& info, CommandBufferType type);
-		void		SubmitCmdBuffer(vk::CommandBuffer  buffer, CommandBufferType type = CommandBufferType::Graphics, vk::Fence fence = {}, vk::Semaphore waitSemaphore = {}, vk::Semaphore signalSempahore = {});
-
-		void		BeginDefaultRenderPass(vk::CommandBuffer  cmds);
-
-		void		BeginDefaultRendering(vk::CommandBuffer  cmds);
-		void		EndRendering(vk::CommandBuffer  cmds);
+		void	BeginDefaultRenderPass(vk::CommandBuffer cmds);
+		void	BeginDefaultRendering(vk::CommandBuffer  cmds);
 
 		vk::Device GetDevice() const {
 			return device;
@@ -110,8 +98,6 @@ namespace NCL::Rendering {
 		vk::Format GetDepthFormat() const;
 
 	protected:		
-		vk::CommandBuffer	BeginCmdBuffer(vk::CommandPool fromPool, const std::string& debugName);
-	
 		vk::ClearValue			defaultClearValues[2];
 		vk::Viewport			defaultViewport;
 		vk::Rect2D				defaultScissor;	

@@ -10,13 +10,14 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 using namespace NCL;
 using namespace Rendering;
+using namespace Vulkan;
 
-VulkanDynamicRenderBuilder::VulkanDynamicRenderBuilder() {
+DynamicRenderBuilder::DynamicRenderBuilder() {
 	usingStencil	= false;
 	layerCount		= 1;
 }
 
-VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::WithColourAttachment(
+DynamicRenderBuilder& DynamicRenderBuilder::WithColourAttachment(
 	vk::ImageView	texture, vk::ImageLayout layout, bool clear, vk::ClearValue clearValue
 )
 {
@@ -32,7 +33,7 @@ VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::WithColourAttachment(
 	return *this;
 }
 
-VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::WithDepthAttachment(
+DynamicRenderBuilder& DynamicRenderBuilder::WithDepthAttachment(
 	vk::ImageView	texture, vk::ImageLayout layout, bool clear, vk::ClearValue clearValue, bool withStencil
 )
 {
@@ -47,22 +48,22 @@ VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::WithDepthAttachment(
 	return *this;
 }
 
-VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::WithRenderArea(vk::Rect2D area) {
+DynamicRenderBuilder& DynamicRenderBuilder::WithRenderArea(vk::Rect2D area) {
 	renderArea = area;
 	return *this;
 }
 
-VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::WithLayerCount(int count) {
+DynamicRenderBuilder& DynamicRenderBuilder::WithLayerCount(int count) {
 	layerCount = count;
 	return *this;
 }
 
-VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::WithSecondaryBuffers() {
+DynamicRenderBuilder& DynamicRenderBuilder::WithSecondaryBuffers() {
 	renderInfo.flags |= vk::RenderingFlagBits::eContentsSecondaryCommandBuffers;
 	return *this;
 }
 
-VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::BeginRendering(vk::CommandBuffer  buffer) {
+DynamicRenderBuilder& DynamicRenderBuilder::BeginRendering(vk::CommandBuffer  buffer) {
 	renderInfo.setLayerCount(layerCount)
 		.setRenderArea(renderArea)
 		.setColorAttachments(colourAttachments)
@@ -72,6 +73,6 @@ VulkanDynamicRenderBuilder& VulkanDynamicRenderBuilder::BeginRendering(vk::Comma
 		renderInfo.setPStencilAttachment(&depthAttachment);
 	}
 
-	buffer.beginRendering(renderInfo/*, *NCL::Rendering::Vulkan::dispatcher*/);
+	buffer.beginRendering(renderInfo);
 	return *this;
 }
