@@ -64,9 +64,9 @@ VulkanRenderer::~VulkanRenderer() {
 	device.destroyDescriptorPool(defaultDescriptorPool);
 	device.destroySwapchainKHR(swapChain);
 
-	device.destroyCommandPool(commandPools[(uint32_t)CommandBufferType::Graphics]);
-	device.destroyCommandPool(commandPools[(uint32_t)CommandBufferType::Copy]);
-	device.destroyCommandPool(commandPools[(uint32_t)CommandBufferType::AsyncCompute]);
+	device.destroyCommandPool(commandPools[CommandBuffer::Graphics]);
+	device.destroyCommandPool(commandPools[CommandBuffer::Copy]);
+	device.destroyCommandPool(commandPools[CommandBuffer::AsyncCompute]);
 
 	device.destroyRenderPass(defaultRenderPass);
 	device.destroyPipelineCache(pipelineCache);
@@ -90,7 +90,7 @@ bool VulkanRenderer::Init() {
 	InitDefaultDescriptorPool();
 
 	hostWindow.SetRenderer(this);
-	OnWindowResize((int)hostWindow.GetScreenSize().x, (int)hostWindow.GetScreenSize().y);
+	OnWindowResize(hostWindow.GetScreenSize().x, hostWindow.GetScreenSize().y);
 
 	pipelineCache = device.createPipelineCache(vk::PipelineCacheCreateInfo());
 
@@ -190,9 +190,9 @@ bool VulkanRenderer::InitGPUDevice() {
 
 	device = gpu.createDevice(createInfo);
 
-	queueTypes[(uint32_t)CommandBufferType::Graphics]		= device.getQueue(gfxQueueIndex, 0);
-	queueTypes[(uint32_t)CommandBufferType::AsyncCompute]	= device.getQueue(computeQueueIndex, 0);
-	queueTypes[(uint32_t)CommandBufferType::Copy]			= device.getQueue(copyQueueIndex, 0);
+	queueTypes[CommandBuffer::Graphics]		= device.getQueue(gfxQueueIndex, 0);
+	queueTypes[CommandBuffer::AsyncCompute]	= device.getQueue(computeQueueIndex, 0);
+	queueTypes[CommandBuffer::Copy]			= device.getQueue(copyQueueIndex, 0);
 	presentQueue	= device.getQueue(gfxPresentIndex, 0);
 
 	deviceMemoryProperties = gpu.getMemoryProperties();
@@ -310,7 +310,7 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 		swapChainList.push_back(chain);
 
 		auto buffers = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo(
-			commandPools[(uint32_t)CommandBufferType::Graphics], vk::CommandBufferLevel::ePrimary, 1));
+			commandPools[CommandBuffer::Graphics], vk::CommandBufferLevel::ePrimary, 1));
 
 		chain->frameCmds = buffers[0];
 	}
@@ -319,13 +319,13 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 }
 
 void	VulkanRenderer::InitCommandPools() {	
-	commandPools[(uint32_t)CommandBufferType::Graphics] = device.createCommandPool(vk::CommandPoolCreateInfo(
+	commandPools[CommandBuffer::Graphics] = device.createCommandPool(vk::CommandPoolCreateInfo(
 		vk::CommandPoolCreateFlagBits::eResetCommandBuffer, gfxQueueIndex));
 
-	commandPools[(uint32_t)CommandBufferType::AsyncCompute] = device.createCommandPool(vk::CommandPoolCreateInfo(
+	commandPools[CommandBuffer::AsyncCompute] = device.createCommandPool(vk::CommandPoolCreateInfo(
 		vk::CommandPoolCreateFlagBits::eResetCommandBuffer, computeQueueIndex));
 
-	commandPools[(uint32_t)CommandBufferType::Copy] = device.createCommandPool(vk::CommandPoolCreateInfo(
+	commandPools[CommandBuffer::Copy] = device.createCommandPool(vk::CommandPoolCreateInfo(
 		vk::CommandPoolCreateFlagBits::eResetCommandBuffer, copyQueueIndex));
 }
 
@@ -411,13 +411,13 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 	defaultClearValues[0] = vk::ClearValue(vk::ClearColorValue(std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.0f}));
 	defaultClearValues[1] = vk::ClearValue(vk::ClearDepthStencilValue(1.0f, 0));
 
-	vk::UniqueCommandBuffer cmds = CmdBufferBegin(device, commandPools[(uint32_t)CommandBufferType::Graphics], "Window resize cmds");
+	vk::UniqueCommandBuffer cmds = CmdBufferBegin(device, commandPools[CommandBuffer::Graphics], "Window resize cmds");
 
 	std::cout << __FUNCTION__ << " New dimensions: " << windowSize.x << " , " << windowSize.y << "\n";
 
 	device.waitIdle();
 
-	depthBuffer = VulkanTexture::CreateDepthTexture(this,(int)hostWindow.GetScreenSize().x, (int)hostWindow.GetScreenSize().y);
+	depthBuffer = VulkanTexture::CreateDepthTexture(this,hostWindow.GetScreenSize().x, hostWindow.GetScreenSize().y);
 	
 	numFrameBuffers = InitBufferChain(*cmds);
 
@@ -435,7 +435,7 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 	device.destroyFence(fence);
 
 	CompleteResize();
-	CmdBufferEndSubmitWait(*cmds, device, queueTypes[(uint32_t)CommandBufferType::Graphics]);
+	CmdBufferEndSubmitWait(*cmds, device, queueTypes[CommandBuffer::Graphics]);
 }
 
 void VulkanRenderer::CompleteResize() {
@@ -450,7 +450,7 @@ void	VulkanRenderer::BeginFrame() {
 	frameCmds.setScissor(0, 1, &defaultScissor);
 
 	if (autoTransitionFrameBuffer) {
-		TransitionPresentToColour(frameCmds, swapChainList[currentSwap]->image);
+		TransitionUndefinedToColour(frameCmds, swapChainList[currentSwap]->image);
 	}
 	if (autoBeginDynamicRendering) {
 		BeginDefaultRendering(frameCmds);
@@ -463,10 +463,10 @@ void	VulkanRenderer::EndFrame() {
 	}
 
 	if (hostWindow.IsMinimised()) {
-		CmdBufferEndSubmitWait(frameCmds, device, queueTypes[(uint32_t)CommandBufferType::Graphics]);
+		CmdBufferEndSubmitWait(frameCmds, device, queueTypes[CommandBuffer::Graphics]);
 	}
 	else {
-		CmdBufferEndSubmit(frameCmds, queueTypes[(uint32_t)CommandBufferType::Graphics]);
+		CmdBufferEndSubmit(frameCmds, queueTypes[CommandBuffer::Graphics]);
 	}
 }
 
@@ -475,8 +475,8 @@ void VulkanRenderer::SwapBuffers() {
 	vk::UniqueFence		presentFence;
 
 	if (!hostWindow.IsMinimised()) {
-		vk::CommandPool gfxPool		= commandPools[(uint32_t)CommandBufferType::Graphics];
-		vk::Queue		gfxQueue	= queueTypes[(uint32_t)CommandBufferType::Graphics];
+		vk::CommandPool gfxPool		= commandPools[CommandBuffer::Graphics];
+		vk::Queue		gfxQueue	= queueTypes[CommandBuffer::Graphics];
 
 		vk::UniqueCommandBuffer cmds = CmdBufferBegin(device, gfxPool, "Window swap cmds");
 
@@ -559,8 +559,8 @@ bool VulkanRenderer::CreateDefaultFrameBuffers() {
 	vk::ImageView attachments[2];
 	
 	vk::FramebufferCreateInfo createInfo = vk::FramebufferCreateInfo()
-		.setWidth((int)hostWindow.GetScreenSize().x)
-		.setHeight((int)hostWindow.GetScreenSize().y)
+		.setWidth(hostWindow.GetScreenSize().x)
+		.setHeight(hostWindow.GetScreenSize().y)
 		.setLayers(1)
 		.setAttachmentCount(2)
 		.setPAttachments(attachments)
@@ -592,8 +592,9 @@ void	VulkanRenderer::InitDefaultDescriptorPool(uint32_t maxSets) {
 		vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, maxSets),
 		vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, maxSets),
 		vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, maxSets),
-
+#ifdef USE_RAY_TRACING
 		vk::DescriptorPoolSize(vk::DescriptorType::eAccelerationStructureKHR, maxSets),
+#endif
 	};
 
 	uint32_t poolCount = sizeof(poolSizes) / sizeof(vk::DescriptorPoolSize);

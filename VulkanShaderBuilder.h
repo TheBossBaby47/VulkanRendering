@@ -24,13 +24,13 @@ namespace NCL::Rendering::Vulkan {
 		ShaderBuilder& WithTessControlBinary(const std::string& name, const std::string& entry = "main");
 		ShaderBuilder& WithTessEvalBinary(const std::string& name, const std::string& entry = "main");
 
-		ShaderBuilder& AddBinary(ShaderStages stage, const std::string& name, const std::string& entry = "main");
+		ShaderBuilder& AddBinary(ShaderStages::Type stage, const std::string& name, const std::string& entry = "main");
 
 		UniqueVulkanShader Build(const std::string& debugName = "");
 
 	protected:
-		std::string shaderFiles[(int)ShaderStages::MAXSIZE];
-		std::string entryPoints[(int)ShaderStages::MAXSIZE];
+		std::string shaderFiles[ShaderStages::MAX_SIZE];
+		std::string entryPoints[ShaderStages::MAX_SIZE];
 		vk::Device sourceDevice;
 
 	};

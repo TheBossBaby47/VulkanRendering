@@ -14,7 +14,7 @@ namespace NCL::Rendering::Vulkan {
 	public:
 		friend class VulkanRenderer;
 		VulkanMesh();
-		VulkanMesh(const std::string& filename);
+		//VulkanMesh(const std::string& filename);
 		~VulkanMesh();
 
 		const vk::PipelineVertexInputStateCreateInfo& GetVertexInputState() const {
@@ -41,7 +41,7 @@ namespace NCL::Rendering::Vulkan {
 		}
 
 		bool GetIndexInformation(vk::Buffer& outBuffer, uint32_t& outOffset, uint32_t& outRange, vk::IndexType& outType);
-		bool GetAttributeInformation(VertexAttribute v, vk::Buffer& outBuffer, uint32_t& outOffset, uint32_t& outRange, vk::Format& outFormat) const;
+		bool GetAttributeInformation(VertexAttribute::Type v, vk::Buffer& outBuffer, uint32_t& outOffset, uint32_t& outRange, vk::Format& outFormat) const;
 
 	protected:
 		vk::PipelineVertexInputStateCreateInfo				vertexInputState;
@@ -58,9 +58,9 @@ namespace NCL::Rendering::Vulkan {
 
 		vk::IndexType indexType = vk::IndexType::eNoneKHR;
 
-		vector<vk::Buffer>			usedBuffers;
-		vector<vk::DeviceSize>		usedOffsets;
-		vector<vk::Format>			usedFormats;
-		vector< VertexAttribute >	usedAttributes;
+		std::vector<vk::Buffer>					usedBuffers;
+		std::vector<vk::DeviceSize>				usedOffsets;
+		std::vector<vk::Format>					usedFormats;
+		std::vector< VertexAttribute::Type >	usedAttributes;
 	};
 }

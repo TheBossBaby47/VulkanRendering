@@ -15,7 +15,7 @@ using namespace NCL;
 using namespace Rendering;
 using namespace Vulkan;
 
-const char* ErrorMessages[(uint32_t)ShaderStages::MAXSIZE] =
+const char* ErrorMessages[ShaderStages::MAX_SIZE] =
 {
 	"Multiple mesh shaders attached to shader object!",
 	"Multiple vertex shaders attached to shader object!",
@@ -26,12 +26,11 @@ const char* ErrorMessages[(uint32_t)ShaderStages::MAXSIZE] =
 
 };
 
-ShaderBuilder& ShaderBuilder::AddBinary(ShaderStages stage, const std::string& name, const std::string& entry) {
-	const uint32_t index = (uint32_t)stage;
-	assert(MessageAssert(shaderFiles[index].empty(), ErrorMessages[index]));
-	assert(MessageAssert(index != (uint32_t)ShaderStages::MAXSIZE, "Invalid shader stage!"));
-	shaderFiles[index] = name;
-	entryPoints[index] = entry;
+ShaderBuilder& ShaderBuilder::AddBinary(ShaderStages::Type stage, const std::string& name, const std::string& entry) {
+	assert(MessageAssert(shaderFiles[stage].empty(), ErrorMessages[stage]));
+	assert(MessageAssert(stage != (uint32_t)ShaderStages::MAX_SIZE, "Invalid shader stage!"));
+	shaderFiles[stage] = name;
+	entryPoints[stage] = entry;
 	return *this;
 }
 
@@ -62,12 +61,12 @@ ShaderBuilder& ShaderBuilder::WithTessEvalBinary(const string& name, const std::
 UniqueVulkanShader ShaderBuilder::Build(const std::string& debugName) {
 	VulkanShader* newShader = new VulkanShader();
 	//mesh and 'traditional' pipeline are mutually exclusive
-	assert(MessageAssert(!(!shaderFiles[(int)ShaderStages::Mesh].empty() && !shaderFiles[(int)ShaderStages::Vertex].empty()),
+	assert(MessageAssert(!(!shaderFiles[ShaderStages::Mesh].empty() && !shaderFiles[ShaderStages::Vertex].empty()),
 		"Cannot use traditional vertex pipeline with mesh shaders!"));
 	
-	for (int i = 0; i < (int)ShaderStages::MAXSIZE; ++i) {
+	for (int i = 0; i < ShaderStages::MAX_SIZE; ++i) {
 		if (!shaderFiles[i].empty()) {
-			newShader->AddBinaryShaderModule(shaderFiles[i],(ShaderStages)i, sourceDevice, entryPoints[i]);
+			newShader->AddBinaryShaderModule(shaderFiles[i],static_cast<ShaderStages::Type>(i), sourceDevice, entryPoints[i]);
 
 			if (!debugName.empty()) {
 				SetDebugName(sourceDevice, vk::ObjectType::eShaderModule, GetVulkanHandle(*newShader->shaderModules[i]), debugName);

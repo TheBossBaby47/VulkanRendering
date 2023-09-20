@@ -21,11 +21,13 @@ namespace NCL::Rendering::Vulkan {
 	class VulkanTexture;
 	struct VulkanBuffer;
 
-	enum class CommandBufferType {
-		Graphics,
-		AsyncCompute,
-		Copy,
-		MAX_BUFFERS
+	struct CommandBuffer {
+		enum Type : uint32_t {
+			Graphics,
+			AsyncCompute,
+			Copy,
+			MAX_BUFFERS
+		};
 	};
 
 	class VulkanRenderer : public RendererBase {
@@ -71,12 +73,12 @@ namespace NCL::Rendering::Vulkan {
 			return memoryAllocator;
 		}
 
-		vk::Queue GetQueue(CommandBufferType type) const {
-			return queueTypes[(uint32_t)type];
+		vk::Queue GetQueue(CommandBuffer::Type type) const {
+			return queueTypes[type];
 		}
 
-		vk::CommandPool GetCommandPool(CommandBufferType type) const {
-			return commandPools[(uint32_t)type];
+		vk::CommandPool GetCommandPool(CommandBuffer::Type type) const {
+			return commandPools[type];
 		}
 
 		vk::ImageView GetCurrentSwapView() const {
@@ -107,8 +109,8 @@ namespace NCL::Rendering::Vulkan {
 		
 		vk::DescriptorPool		defaultDescriptorPool;	//descriptor sets come from here!
 
-		vk::CommandPool			commandPools[(uint32_t)CommandBufferType::MAX_BUFFERS];
-		vk::Queue				queueTypes[(uint32_t)CommandBufferType::MAX_BUFFERS];
+		vk::CommandPool			commandPools[CommandBuffer::Type::MAX_BUFFERS];
+		vk::Queue				queueTypes[CommandBuffer::Type::MAX_BUFFERS];
 
 		vk::CommandBuffer		frameCmds;
 

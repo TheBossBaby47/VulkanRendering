@@ -19,9 +19,9 @@ namespace NCL::Rendering::Vulkan {
 	void BeginDebugArea(vk::CommandBuffer buffer, const std::string& name);
 	void EndDebugArea(vk::CommandBuffer buffer);
 
-	void ImageTransitionBarrier(vk::CommandBuffer  buffer, vk::Image i, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int mipLevel = 0, int layer = 0);
+	void ImageTransitionBarrier(vk::CommandBuffer  buffer, vk::Image i, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int firstMip = 0, int mipCount = VK_REMAINING_MIP_LEVELS, int firstLayer = 0, int layerCount = VK_REMAINING_ARRAY_LAYERS);
 
-	void TransitionPresentToColour(vk::CommandBuffer  buffer, vk::Image t);
+	void TransitionUndefinedToColour(vk::CommandBuffer  buffer, vk::Image t);
 	void TransitionColourToPresent(vk::CommandBuffer  buffer, vk::Image t);
 
 	void TransitionColourToSampler(vk::CommandBuffer  buffer, vk::Image t);
@@ -30,9 +30,10 @@ namespace NCL::Rendering::Vulkan {
 	void TransitionSamplerToColour(vk::CommandBuffer  buffer, vk::Image t);
 	void TransitionSamplerToDepth(vk::CommandBuffer  buffer, vk::Image t, bool doStencil = false);
 
-	void DispatchCompute(vk::CommandBuffer  buffer, unsigned int xCount, unsigned int yCount = 1, unsigned int zCount = 1);
-
 	bool MessageAssert(bool condition, const char* msg);
+
+	vk::AccessFlags DefaultAccessFlags(vk::ImageLayout forLayout);
+	vk::AccessFlags2 DefaultAccessFlags2(vk::ImageLayout forLayout);
 
 	vk::UniqueDescriptorSet BuildUniqueDescriptorSet(vk::Device device, vk::DescriptorSetLayout  layout, vk::DescriptorPool pool, uint32_t variableDescriptorCount = 0);
 

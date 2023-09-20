@@ -38,9 +38,9 @@ size_t attributeSizes[] = {
 VulkanMesh::VulkanMesh()	{
 }
 
-VulkanMesh::VulkanMesh(const std::string& filename) : Mesh(filename) {
-	debugName = filename;
-}
+//VulkanMesh::VulkanMesh(const std::string& filename) : Mesh(filename) {
+//	debugName = filename;
+//}
 
 VulkanMesh::~VulkanMesh()	{
 }
@@ -55,8 +55,8 @@ void VulkanMesh::UploadToGPU(RendererBase* r, vk::BufferUsageFlags extraUses) {
 
 	VulkanRenderer* renderer = (VulkanRenderer*)r;
 
-	vk::Queue gfxQueue		= renderer->GetQueue(CommandBufferType::Graphics);
-	vk::CommandPool pool	= renderer->GetCommandPool(CommandBufferType::Graphics);
+	vk::Queue gfxQueue		= renderer->GetQueue(CommandBuffer::Graphics);
+	vk::CommandPool pool	= renderer->GetCommandPool(CommandBuffer::Graphics);
 	vk::Device device		= renderer->GetDevice();
 
 	vk::UniqueCommandBuffer cmdBuffer = CmdBufferBegin(device, pool, "VulkanMesh upload");
@@ -87,11 +87,11 @@ void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::Comman
 
 	vk::Device sourceDevice = renderer->GetDevice();
 
-	vector<const char*> attributeDataSources;//Pointer for each attribute in CPU memory
+	std::vector<const char*> attributeDataSources;//Pointer for each attribute in CPU memory
 
 	size_t vSize = 0;
 
-	auto atrributeFunc = [&](VertexAttribute attribute, size_t count, const char* data) {
+	auto atrributeFunc = [&](VertexAttribute::Type attribute, size_t count, const char* data) {
 		if (count > 0) {
 			usedAttributes.push_back(attribute);
 			usedFormats.push_back(attributeFormats[attribute]);
@@ -195,13 +195,11 @@ uint32_t VulkanMesh::GetAttributeMask() const {
 
 size_t VulkanMesh::CalculateGPUAllocationSize() const {
 	size_t vSize = 0;
-	auto atrributeSizeFunc = [&](VertexAttribute attribute, size_t count) {
+	auto atrributeSizeFunc = [&](VertexAttribute::Type attribute, size_t count) {
 		if (count > 0) {
 			vSize += (int)attributeSizes[attribute];
 		}
 	};
-
-	//vSize += GetPositionData().size() * attributeSizes[VertexAttribute::Positions];
 
 	atrributeSizeFunc(VertexAttribute::Positions, GetPositionData().size());
 	atrributeSizeFunc(VertexAttribute::Colours, GetColourData().size());
@@ -236,7 +234,7 @@ bool VulkanMesh::GetIndexInformation(vk::Buffer& outBuffer, uint32_t& outOffset,
 	return true;
 }
 
-bool VulkanMesh::GetAttributeInformation(VertexAttribute v, vk::Buffer& outBuffer, uint32_t& outOffset, uint32_t& outRange, vk::Format& outFormat) const {
+bool VulkanMesh::GetAttributeInformation(VertexAttribute::Type v, vk::Buffer& outBuffer, uint32_t& outOffset, uint32_t& outRange, vk::Format& outFormat) const {
 	for (uint32_t i = 0; i < usedAttributes.size(); ++i) {
 		if (usedAttributes[i] != v) {
 			continue;
@@ -252,14 +250,3 @@ bool VulkanMesh::GetAttributeInformation(VertexAttribute v, vk::Buffer& outBuffe
 
 	return false;
 }
-
-//bool VulkanMesh::GetAttributeInformation(VertexAttribute v,  vk::VertexInputAttributeDescription& outDescription) const {
-//	for (const auto& i : attributeDescriptions) {
-//		if (i.binding != v) {
-//			continue;
-//		}
-//		outDescription = vk::VertexInputAttributeDescription(i);
-//		return true;
-//	}
-//	return false;
-//}

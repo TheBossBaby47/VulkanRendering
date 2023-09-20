@@ -43,35 +43,77 @@ void Vulkan::SetNullDescriptor(vk::Device device, vk::DescriptorSetLayout layout
 	nullDescriptors.insert({ device, layout });
 }
 
-void	Vulkan::ImageTransitionBarrier(vk::CommandBuffer  cmdBuffer, vk::Image image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int mipLevel, int layer) {
-	vk::ImageSubresourceRange subRange = vk::ImageSubresourceRange(aspect, mipLevel, 1, layer, 1);
-
-	vk::ImageMemoryBarrier memoryBarrier = vk::ImageMemoryBarrier()
-		.setSubresourceRange(subRange)
-		.setImage(image)
-		.setOldLayout(oldLayout)
-		.setNewLayout(newLayout);
-
-	if (newLayout == vk::ImageLayout::eTransferDstOptimal) {
-		memoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+vk::AccessFlags Vulkan::DefaultAccessFlags(vk::ImageLayout forLayout) {
+	if (forLayout == vk::ImageLayout::eTransferDstOptimal) {
+		return vk::AccessFlagBits::eTransferWrite;
 	}
-	else if (newLayout == vk::ImageLayout::eTransferSrcOptimal) {
-		memoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
+	else if (forLayout == vk::ImageLayout::eTransferSrcOptimal) {
+		return vk::AccessFlagBits::eTransferRead;
 	}
-	else if (newLayout == vk::ImageLayout::eColorAttachmentOptimal) {
-		memoryBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+	else if (forLayout == vk::ImageLayout::eColorAttachmentOptimal) {
+		return vk::AccessFlagBits::eColorAttachmentWrite;
 	}
-	else if (newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
-		memoryBarrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+	else if (forLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
+		return vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 	}
-	else if (newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-		memoryBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eInputAttachmentRead; //added last bit?!?
+	else if (forLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+		return vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eInputAttachmentRead; //added last bit?!?
 	}
-
-	cmdBuffer.pipelineBarrier(srcStage, dstStage, vk::DependencyFlags(), 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+	return vk::AccessFlagBits::eNone;
 }
 
-void Vulkan::TransitionPresentToColour(vk::CommandBuffer  buffer, vk::Image t) {
+vk::AccessFlags2 Vulkan::DefaultAccessFlags2(vk::ImageLayout forLayout) {
+	if (forLayout == vk::ImageLayout::eTransferDstOptimal) {
+		return vk::AccessFlagBits2::eTransferWrite;
+	}
+	else if (forLayout == vk::ImageLayout::eTransferSrcOptimal) {
+		return vk::AccessFlagBits2::eTransferRead;
+	}
+	else if (forLayout == vk::ImageLayout::eColorAttachmentOptimal) {
+		return vk::AccessFlagBits2::eColorAttachmentWrite;
+	}
+	else if (forLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
+		return vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
+	}
+	else if (forLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+		return vk::AccessFlagBits2::eShaderRead | vk::AccessFlagBits2::eInputAttachmentRead; //added last bit?!?
+	}
+	return vk::AccessFlagBits2::eNone;
+}
+
+void	Vulkan::ImageTransitionBarrier(vk::CommandBuffer  cmdBuffer, vk::Image image, 
+	vk::ImageLayout oldLayout, vk::ImageLayout newLayout, 
+	vk::ImageAspectFlags aspect, 
+	vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, 
+	int mipLevel, int mipCount, int layer, int layerCount) {
+	vk::ImageMemoryBarrier memoryBarrier = vk::ImageMemoryBarrier()
+		.setSubresourceRange(vk::ImageSubresourceRange(aspect, mipLevel, mipCount, layer, layerCount))
+		.setImage(image)
+		.setOldLayout(oldLayout)
+		.setNewLayout(newLayout)
+		.setDstAccessMask(DefaultAccessFlags(newLayout));
+
+	cmdBuffer.pipelineBarrier(srcStage, dstStage, vk::DependencyFlags(), 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+
+	//vk::ImageMemoryBarrier2 memoryBarrier2;
+	//
+	//memoryBarrier2.setImage(image)
+	//	.setSubresourceRange(vk::ImageSubresourceRange(aspect, mipLevel, mipCount, layer, layerCount))
+	//	.setOldLayout(oldLayout)
+	//	.setNewLayout(newLayout)
+	//	.setSrcStageMask(srcStage)
+	//	.setDstStageMask()
+	//	.setDstAccessMask((vk::AccessFlagBits2)DefaultAccessFlags(newLayout))
+	//	
+
+	//vk::DependencyInfo info;
+	//info.imageMemoryBarrierCount = 1;
+	//info.pImageMemoryBarriers = &memoryBarrier2;
+
+	//cmdBuffer.pipelineBarrier2(info);
+}
+
+void Vulkan::TransitionUndefinedToColour(vk::CommandBuffer  buffer, vk::Image t) {
 	ImageTransitionBarrier(buffer, t,
 		vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal,
 		vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eColorAttachmentOutput,

@@ -9,6 +9,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "VulkanPipeline.h"
 #include "VulkanUtils.h"
 
+
 namespace NCL::Rendering::Vulkan {
 	class VulkanRenderer;
 	class VulkanShader;

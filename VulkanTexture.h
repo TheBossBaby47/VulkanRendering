@@ -7,6 +7,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "../NCLCoreClasses/Texture.h"
+#include "VulkanTextureBuilder.h"
 #include "SmartTypes.h"
 
 namespace NCL::Rendering::Vulkan {
@@ -14,17 +15,18 @@ namespace NCL::Rendering::Vulkan {
 
 	class VulkanTexture : public Texture	{
 		friend class VulkanRenderer;
+		friend class TextureBuilder;
 	public:
 		~VulkanTexture();
 
-		static UniqueVulkanTexture CubemapFromFiles(
-			VulkanRenderer* renderer,
-			const std::string& negativeXFile, const std::string& positiveXFile, 
-			const std::string& negativeYFile, const std::string& positiveYFile,
-			const std::string& negativeZFile, const std::string& positiveZFile,
-			const std::string& debugName = "CubeMap");
+		//static UniqueVulkanTexture CubemapFromFiles(
+		//	VulkanRenderer* renderer,
+		//	const std::string& negativeXFile, const std::string& positiveXFile, 
+		//	const std::string& negativeYFile, const std::string& positiveYFile,
+		//	const std::string& negativeZFile, const std::string& positiveZFile,
+		//	const std::string& debugName = "CubeMap");
 
-		static UniqueVulkanTexture TextureFromFile(VulkanRenderer* renderer, const std::string& name);
+		//static UniqueVulkanTexture TextureFromFile(VulkanRenderer* renderer, const std::string& name);
 		static UniqueVulkanTexture CreateDepthTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName = "DefaultDepth", bool hasStencil = true, bool mips = false);
 		static UniqueVulkanTexture CreateColourTexture(VulkanRenderer* renderer, 
 			uint32_t width, uint32_t height, 
@@ -57,11 +59,16 @@ namespace NCL::Rendering::Vulkan {
 			return format;
 		}
 
-		void FillImageStorageView(vk::ImageView& view, vk::Device device);
+		void GenerateMipMaps(vk::CommandBuffer  buffer, 
+								vk::ImageLayout endLayout = vk::ImageLayout::eShaderReadOnlyOptimal, 
+								vk::PipelineStageFlags endFlags = vk::PipelineStageFlagBits::eFragmentShader);
+
+		static size_t GetMaxMips(Vector2i dimensions) {
+			return (size_t)std::floor(log2(float(std::min(dimensions.x, dimensions.y)))) + 1;
+		}
 
 	protected:
 		VulkanTexture();
-		void GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout endLayout, vk::PipelineStageFlags endFlags);
 
 		void	GenerateTextureInternal(VulkanRenderer* renderer, uint32_t width, uint32_t height, uint32_t mipcount, bool isCube, const std::string& debugName, vk::Format format, vk::ImageAspectFlags aspect, vk::ImageUsageFlags usage, vk::ImageLayout outLayout, vk::PipelineStageFlags pipeType);
 		void	GenerateTextureFromDataInternal(VulkanRenderer* renderer, uint32_t width, uint32_t height, uint32_t channelCount, bool isCube, std::vector<char*>dataSrcs, const std::string& debugName);
@@ -78,8 +85,6 @@ namespace NCL::Rendering::Vulkan {
 		vk::ImageCreateInfo		createInfo;
 		vk::ImageAspectFlags	aspectType;
 
-		uint32_t width;
-		uint32_t height;
 		uint32_t mipCount;
 		uint32_t layerCount;
 	};
