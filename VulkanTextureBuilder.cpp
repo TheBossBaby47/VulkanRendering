@@ -46,12 +46,12 @@ TextureBuilder& TextureBuilder::WithAspects(vk::ImageAspectFlags inAspects) {
 }
 
 TextureBuilder& TextureBuilder::WithUsages(vk::ImageUsageFlags inUsages) {
-    usages |= inUsages;
+    usages = inUsages;
     return *this;
 }
 
 TextureBuilder& TextureBuilder::WithPipeFlags(vk::PipelineStageFlags flags) {
-    pipeFlags |= flags;
+    pipeFlags = flags;
     return *this;
 }
 

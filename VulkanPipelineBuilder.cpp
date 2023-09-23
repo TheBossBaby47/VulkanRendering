@@ -35,7 +35,6 @@ PipelineBuilder::PipelineBuilder(vk::Device device) : PipelineBuilderBase(device
 		.setDepthBoundsTestEnable(false);
 
 	depthRenderingFormat		= vk::Format::eUndefined;
-	stencilRenderingFormat		= vk::Format::eUndefined;
 
 	rasterCreate.setCullMode(vk::CullModeFlagBits::eNone)
 		.setPolygonMode(vk::PolygonMode::eFill)
@@ -43,33 +42,6 @@ PipelineBuilder::PipelineBuilder(vk::Device device) : PipelineBuilderBase(device
 		.setLineWidth(1.0f);
 
 	inputAsmCreate.setTopology(vk::PrimitiveTopology::eTriangleList);
-}
-
-PipelineBuilder& PipelineBuilder::WithDepthState(vk::CompareOp op, bool depthEnabled, bool writeEnabled, bool stencilEnabled) {
-	depthStencilCreate.setDepthCompareOp(op)
-		.setDepthTestEnable(depthEnabled)
-		.setDepthWriteEnable(writeEnabled)
-		.setStencilTestEnable(stencilEnabled);
-	return *this;
-}
-
-PipelineBuilder& PipelineBuilder::WithBlendState(vk::BlendFactor srcState, vk::BlendFactor dstState, bool isEnabled) {
-	vk::PipelineColorBlendAttachmentState pipeBlend;
-
-	pipeBlend.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
-		.setBlendEnable(isEnabled)
-		.setAlphaBlendOp(vk::BlendOp::eAdd)
-		.setColorBlendOp(vk::BlendOp::eAdd)
-
-		.setSrcAlphaBlendFactor(srcState)
-		.setSrcColorBlendFactor(srcState)
-
-		.setDstAlphaBlendFactor(dstState)
-		.setDstColorBlendFactor(dstState);
-
-	blendAttachStates.emplace_back(pipeBlend);
-
-	return *this;
 }
 
 PipelineBuilder& PipelineBuilder::WithRaster(vk::CullModeFlagBits cullMode, vk::PolygonMode polyMode) {
@@ -97,19 +69,76 @@ PipelineBuilder& PipelineBuilder::WithPass(vk::RenderPass& renderPass) {
 	return *this;
 }
 
-PipelineBuilder& PipelineBuilder::WithDepthStencilFormat(vk::Format depthFormat) {
-	depthRenderingFormat	= depthFormat;
-	stencilRenderingFormat	= depthFormat;
+PipelineBuilder& PipelineBuilder::WithColourAttachment(vk::Format f) {
+	allColourRenderingFormats.push_back(f);
+
+	vk::PipelineColorBlendAttachmentState pipeBlend;
+	pipeBlend.setBlendEnable(false);
+	pipeBlend.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
+	blendAttachStates.emplace_back(pipeBlend);
+
 	return *this;
 }
 
-PipelineBuilder& PipelineBuilder::WithDepthFormat(vk::Format depthFormat) {
+PipelineBuilder& PipelineBuilder::WithColourAttachment(vk::Format f, vk::BlendFactor srcState, vk::BlendFactor dstState) {
+	allColourRenderingFormats.push_back(f);
+
+	vk::PipelineColorBlendAttachmentState pipeBlend;
+
+	pipeBlend.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
+		.setBlendEnable(true)
+		.setAlphaBlendOp(vk::BlendOp::eAdd)
+		.setColorBlendOp(vk::BlendOp::eAdd)
+
+		.setSrcAlphaBlendFactor(srcState)
+		.setSrcColorBlendFactor(srcState)
+
+		.setDstAlphaBlendFactor(dstState)
+		.setDstColorBlendFactor(dstState);
+
+	blendAttachStates.emplace_back(pipeBlend);
+
+	return *this;
+}
+
+PipelineBuilder& PipelineBuilder::WithColourAttachment(vk::Format f, vk::PipelineColorBlendAttachmentState state) {
+	allColourRenderingFormats.push_back(f);
+	blendAttachStates.emplace_back(state);
+	return *this;
+}
+
+PipelineBuilder& PipelineBuilder::WithDepthAttachment(vk::Format depthFormat) {
 	depthRenderingFormat = depthFormat;
+
 	return *this;
 }
 
-PipelineBuilder& PipelineBuilder::WithColourFormats(const std::vector<vk::Format>& formats) {
-	allColourRenderingFormats = formats;
+PipelineBuilder& PipelineBuilder::WithDepthAttachment(vk::Format depthFormat, vk::CompareOp op, bool testEnabled, bool writeEnabled) {
+	depthRenderingFormat = depthFormat;
+	depthStencilCreate.setDepthCompareOp(op)
+		.setDepthTestEnable(testEnabled)
+		.setDepthWriteEnable(writeEnabled);
+	return *this;
+}
+
+PipelineBuilder& PipelineBuilder::WithDepthAttachment(vk::Format depthFormat, vk::PipelineDepthStencilStateCreateInfo& info) {
+	depthRenderingFormat	= depthFormat;
+	depthStencilCreate		= info;
+	return *this;
+}
+
+PipelineBuilder& PipelineBuilder::WithStencilOps(vk::StencilOpState state) {
+	depthStencilCreate.front = state;
+	return *this;
+}
+
+PipelineBuilder& PipelineBuilder::WithStencilOpsFront(vk::StencilOpState state) {
+	depthStencilCreate.front = state;
+	return *this;
+}
+
+PipelineBuilder& PipelineBuilder::WithStencilOpsBack(vk::StencilOpState state) {
+	depthStencilCreate.back = state;
 	return *this;
 }
 
@@ -124,21 +153,13 @@ VulkanPipeline	PipelineBuilder::Build(const std::string& debugName, vk::Pipeline
 		.setSetLayouts(allLayouts)
 		.setPushConstantRanges(allPushConstants);
 
-	if (blendAttachStates.empty()) {
-		if (!allColourRenderingFormats.empty()) {
-			for (int i = 0; i < allColourRenderingFormats.size(); ++i) {
-				WithBlendState(vk::BlendFactor::eSrcAlpha, vk::BlendFactor::eOneMinusSrcAlpha, false);
-			}
-		}
-		else {
-			WithBlendState(vk::BlendFactor::eSrcAlpha, vk::BlendFactor::eOneMinusSrcAlpha, false);
-		}
-	}
-
 	blendCreate.setAttachments(blendAttachStates);
 	blendCreate.setBlendConstants({ 1.0f, 1.0f, 1.0f, 1.0f });
 
 	VulkanPipeline output;
+
+	vk::Format stencilRenderingFormat = vk::Format::eUndefined;
+
 
 	output.layout = sourceDevice.createPipelineLayoutUnique(pipeLayoutCreate);
 

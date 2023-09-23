@@ -8,6 +8,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "VulkanRenderer.h"
 #include "VulkanMesh.h"
 #include "VulkanTexture.h"
+#include "VulkanTextureBuilder.h"
 
 #include "VulkanUtils.h"
 
@@ -417,7 +418,19 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 
 	device.waitIdle();
 
-	depthBuffer = VulkanTexture::CreateDepthTexture(this,hostWindow.GetScreenSize().x, hostWindow.GetScreenSize().y);
+	depthBuffer = TextureBuilder(GetDevice(), GetMemoryAllocator())
+		.WithPool(GetCommandPool(CommandBuffer::Graphics))
+		.WithQueue(GetQueue(CommandBuffer::Graphics))
+		.WithDimension(hostWindow.GetScreenSize().x, hostWindow.GetScreenSize().y)
+		.WithAspects(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
+		.WithFormat(vk::Format::eD24UnormS8Uint)
+		.WithLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+		.WithUsages(vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled)
+		.WithPipeFlags(vk::PipelineStageFlagBits::eEarlyFragmentTests)
+		.WithMips(false)
+		.Build("Depth Buffer");
+
+	//depthBuffer = VulkanTexture::CreateDepthTexture(this,hostWindow.GetScreenSize().x, hostWindow.GetScreenSize().y);
 	
 	numFrameBuffers = InitBufferChain(*cmds);
 

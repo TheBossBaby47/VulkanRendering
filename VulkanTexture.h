@@ -27,14 +27,14 @@ namespace NCL::Rendering::Vulkan {
 		//	const std::string& debugName = "CubeMap");
 
 		//static UniqueVulkanTexture TextureFromFile(VulkanRenderer* renderer, const std::string& name);
-		static UniqueVulkanTexture CreateDepthTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName = "DefaultDepth", bool hasStencil = true, bool mips = false);
-		static UniqueVulkanTexture CreateColourTexture(VulkanRenderer* renderer, 
-			uint32_t width, uint32_t height, 
-			const std::string& debugName = "DefaultColour", 
-			vk::Format format = vk::Format::eB8G8R8A8Unorm, 
-			vk::ImageUsageFlags flags = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled, 
-			vk::ImageLayout		 initialLayout = vk::ImageLayout::eColorAttachmentOptimal,
-			bool mips = false);
+		//static UniqueVulkanTexture CreateDepthTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName = "DefaultDepth", bool hasStencil = true, bool mips = false);
+		//static UniqueVulkanTexture CreateColourTexture(VulkanRenderer* renderer, 
+		//	uint32_t width, uint32_t height, 
+		//	const std::string& debugName = "DefaultColour", 
+		//	vk::Format format = vk::Format::eB8G8R8A8Unorm, 
+		//	vk::ImageUsageFlags flags = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled, 
+		//	vk::ImageLayout		 initialLayout = vk::ImageLayout::eColorAttachmentOptimal,
+		//	bool mips = false);
 
 		vk::ImageView GetDefaultView() const {
 			return *defaultView;
@@ -70,8 +70,8 @@ namespace NCL::Rendering::Vulkan {
 	protected:
 		VulkanTexture();
 
-		void	GenerateTextureInternal(VulkanRenderer* renderer, uint32_t width, uint32_t height, uint32_t mipcount, bool isCube, const std::string& debugName, vk::Format format, vk::ImageAspectFlags aspect, vk::ImageUsageFlags usage, vk::ImageLayout outLayout, vk::PipelineStageFlags pipeType);
-		void	GenerateTextureFromDataInternal(VulkanRenderer* renderer, uint32_t width, uint32_t height, uint32_t channelCount, bool isCube, std::vector<char*>dataSrcs, const std::string& debugName);
+		//void	GenerateTextureInternal(VulkanRenderer* renderer, uint32_t width, uint32_t height, uint32_t mipcount, bool isCube, const std::string& debugName, vk::Format format, vk::ImageAspectFlags aspect, vk::ImageUsageFlags usage, vk::ImageLayout outLayout, vk::PipelineStageFlags pipeType);
+		//void	GenerateTextureFromDataInternal(VulkanRenderer* renderer, uint32_t width, uint32_t height, uint32_t channelCount, bool isCube, std::vector<char*>dataSrcs, const std::string& debugName);
 
 		vk::UniqueImageView	defaultView;
 		vk::Image			image;

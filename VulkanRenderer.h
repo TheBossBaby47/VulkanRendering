@@ -52,15 +52,12 @@ namespace NCL::Rendering::Vulkan {
 
 		void DrawMesh(vk::CommandBuffer  to, const VulkanMesh& m, int instanceCount = 1);
 		void DrawMeshLayer(const VulkanMesh& m, unsigned int layer, vk::CommandBuffer  to, int instanceCount = 1);
-
+	
 		vk::UniqueDescriptorSet BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool = {}, uint32_t variableDescriptorCount = 0);
 		void	WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset = 0, size_t range = 0);
 		void	WriteImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
 		void	WriteStorageImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
 		void	WriteTLASDescriptor(vk::DescriptorSet set, int bindingSlot, vk::AccelerationStructureKHR tlas);
-
-
-
 
 		void	BeginDefaultRenderPass(vk::CommandBuffer cmds);
 		void	BeginDefaultRendering(vk::CommandBuffer  cmds);
@@ -79,6 +76,10 @@ namespace NCL::Rendering::Vulkan {
 
 		vk::CommandPool GetCommandPool(CommandBuffer::Type type) const {
 			return commandPools[type];
+		}
+
+		vk::DescriptorPool GetDescriptorPool() {
+			return defaultDescriptorPool;
 		}
 
 		vk::ImageView GetCurrentSwapView() const {

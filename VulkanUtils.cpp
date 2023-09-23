@@ -244,6 +244,23 @@ void	Vulkan::WriteImageDescriptor(vk::Device device, vk::DescriptorSet set, int 
 	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 }
 
+void	Vulkan::WriteStorageImageDescriptor(vk::Device device, vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
+	auto imageInfo = vk::DescriptorImageInfo()
+		.setSampler(sampler)
+		.setImageView(view)
+		.setImageLayout(layout);
+
+	auto descriptorWrite = vk::WriteDescriptorSet()
+		.setDescriptorType(vk::DescriptorType::eStorageImage)
+		.setDstSet(set)
+		.setDstBinding(bindingNum)
+		.setDstArrayElement(subIndex)
+		.setDescriptorCount(1)
+		.setPImageInfo(&imageInfo);
+
+	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+}
+
 void	Vulkan::WriteBufferDescriptor(vk::Device device, vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset, size_t range) {
 	auto descriptorInfo = vk::DescriptorBufferInfo()
 		.setBuffer(buff)
@@ -273,23 +290,6 @@ void	Vulkan::WriteTLASDescriptor(vk::Device device, vk::DescriptorSet set, int b
 		.setPNext(&descriptorInfo);
 
 	device.updateDescriptorSets(1, &descriptorWrites, 0, nullptr);
-}
-
-void	Vulkan::WriteStorageImageDescriptor(vk::Device device, vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
-	auto imageInfo = vk::DescriptorImageInfo()
-		.setSampler(sampler)
-		.setImageView(view)
-		.setImageLayout(layout);
-
-	auto descriptorWrite = vk::WriteDescriptorSet()
-		.setDescriptorType(vk::DescriptorType::eStorageImage)
-		.setDstSet(set)
-		.setDstBinding(bindingNum)
-		.setDstArrayElement(subIndex)
-		.setDescriptorCount(1)
-		.setPImageInfo(&imageInfo);
-
-	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 }
 
 vk::UniqueDescriptorSet Vulkan::BuildUniqueDescriptorSet(vk::Device device, vk::DescriptorSetLayout  layout, vk::DescriptorPool pool, uint32_t variableDescriptorCount) {
