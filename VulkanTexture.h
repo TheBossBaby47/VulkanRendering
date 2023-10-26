@@ -19,23 +19,6 @@ namespace NCL::Rendering::Vulkan {
 	public:
 		~VulkanTexture();
 
-		//static UniqueVulkanTexture CubemapFromFiles(
-		//	VulkanRenderer* renderer,
-		//	const std::string& negativeXFile, const std::string& positiveXFile, 
-		//	const std::string& negativeYFile, const std::string& positiveYFile,
-		//	const std::string& negativeZFile, const std::string& positiveZFile,
-		//	const std::string& debugName = "CubeMap");
-
-		//static UniqueVulkanTexture TextureFromFile(VulkanRenderer* renderer, const std::string& name);
-		//static UniqueVulkanTexture CreateDepthTexture(VulkanRenderer* renderer, uint32_t width, uint32_t height, const std::string& debugName = "DefaultDepth", bool hasStencil = true, bool mips = false);
-		//static UniqueVulkanTexture CreateColourTexture(VulkanRenderer* renderer, 
-		//	uint32_t width, uint32_t height, 
-		//	const std::string& debugName = "DefaultColour", 
-		//	vk::Format format = vk::Format::eB8G8R8A8Unorm, 
-		//	vk::ImageUsageFlags flags = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled, 
-		//	vk::ImageLayout		 initialLayout = vk::ImageLayout::eColorAttachmentOptimal,
-		//	bool mips = false);
-
 		vk::ImageView GetDefaultView() const {
 			return *defaultView;
 		}
@@ -70,20 +53,14 @@ namespace NCL::Rendering::Vulkan {
 	protected:
 		VulkanTexture();
 
-		//void	GenerateTextureInternal(VulkanRenderer* renderer, uint32_t width, uint32_t height, uint32_t mipcount, bool isCube, const std::string& debugName, vk::Format format, vk::ImageAspectFlags aspect, vk::ImageUsageFlags usage, vk::ImageLayout outLayout, vk::PipelineStageFlags pipeType);
-		//void	GenerateTextureFromDataInternal(VulkanRenderer* renderer, uint32_t width, uint32_t height, uint32_t channelCount, bool isCube, std::vector<char*>dataSrcs, const std::string& debugName);
-
-		vk::UniqueImageView	defaultView;
-		vk::Image			image;
-
-		VmaAllocation		allocationHandle;
-		VmaAllocationInfo	allocationInfo;
-		VmaAllocator		allocator;
-
+		vk::UniqueImageView		defaultView;
+		vk::Image				image; //Don't use 'Unique', uses VMA
 		vk::Format				format;
-
-		vk::ImageCreateInfo		createInfo;
 		vk::ImageAspectFlags	aspectType;
+
+		VmaAllocation			allocationHandle;
+		VmaAllocationInfo		allocationInfo;
+		VmaAllocator			allocator;
 
 		uint32_t mipCount;
 		uint32_t layerCount;

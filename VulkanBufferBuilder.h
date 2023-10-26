@@ -18,7 +18,7 @@ namespace NCL::Rendering::Vulkan {
 		BufferBuilder& WithBufferUsage(vk::BufferUsageFlags flags);
 		BufferBuilder& WithMemoryProperties(vk::MemoryPropertyFlags flags);
 		BufferBuilder& WithHostVisibility();
-		BufferBuilder& WithDeviceAddresses();
+		BufferBuilder& WithDeviceAddress();
 		BufferBuilder& WithPersistentMapping();
 
 		BufferBuilder& WithUniqueAllocation();

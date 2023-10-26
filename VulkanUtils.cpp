@@ -13,7 +13,7 @@ using namespace NCL;
 using namespace Rendering;
 using namespace Vulkan;
 
-std::map<vk::Device, vk::DescriptorSetLayout > NCL::Rendering::Vulkan::nullDescriptors;
+std::map<vk::Device, vk::DescriptorSetLayout > nullDescriptors;
 
 vk::DynamicLoader NCL::Rendering::Vulkan::dynamicLoader;
 
@@ -41,6 +41,10 @@ void Vulkan::EndDebugArea(vk::CommandBuffer b) {
 
 void Vulkan::SetNullDescriptor(vk::Device device, vk::DescriptorSetLayout layout) {
 	nullDescriptors.insert({ device, layout });
+}
+
+vk::DescriptorSetLayout Vulkan::GetNullDescriptor(vk::Device device) {
+	return nullDescriptors[device];
 }
 
 vk::AccessFlags Vulkan::DefaultAccessFlags(vk::ImageLayout forLayout) {
@@ -307,4 +311,22 @@ vk::UniqueDescriptorSet Vulkan::BuildUniqueDescriptorSet(vk::Device device, vk::
 	}
 
 	return std::move(device.allocateDescriptorSetsUnique(allocateInfo)[0]);
+}
+
+/*Descriptor Buffer Writing*/
+void Vulkan::WriteBufferDescriptor(vk::Device device,
+	const vk::PhysicalDeviceDescriptorBufferPropertiesEXT& props,
+	void* descriptorBufferMemory,
+	vk::DescriptorSetLayout layout,
+	size_t layoutIndex,
+	vk::DeviceAddress bufferAddress,
+	size_t bufferSize
+) {
+	vk::DescriptorAddressInfoEXT address(bufferAddress, bufferSize);
+
+	vk::DescriptorGetInfoEXT getInfo(vk::DescriptorType::eUniformBuffer, &address);
+
+	vk::DeviceSize offset = device.getDescriptorSetLayoutBindingOffsetEXT(layout, layoutIndex);
+
+	device.getDescriptorEXT(&getInfo, props.uniformBufferDescriptorSize, ((char*)descriptorBufferMemory) + offset);
 }

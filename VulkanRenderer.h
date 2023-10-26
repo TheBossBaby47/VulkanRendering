@@ -21,7 +21,7 @@ namespace NCL::Rendering::Vulkan {
 	class VulkanTexture;
 	struct VulkanBuffer;
 
-	struct CommandBuffer {
+	namespace CommandBuffer {
 		enum Type : uint32_t {
 			Graphics,
 			AsyncCompute,

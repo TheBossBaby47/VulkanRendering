@@ -34,7 +34,7 @@ namespace NCL::Rendering::Vulkan {
 		T& WithDescriptorSetLayout(uint32_t slot, vk::DescriptorSetLayout layout) {
 			assert(slot < 32);
 			if (slot >= allLayouts.size()) {
-				vk::DescriptorSetLayout nullLayout = Vulkan::nullDescriptors[sourceDevice];
+				vk::DescriptorSetLayout nullLayout = Vulkan::GetNullDescriptor(sourceDevice);
 				while (allLayouts.size() <= slot) {
 					allLayouts.push_back(nullLayout);
 				}

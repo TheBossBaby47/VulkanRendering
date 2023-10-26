@@ -91,7 +91,7 @@ bool VulkanRenderer::Init() {
 	InitDefaultDescriptorPool();
 
 	hostWindow.SetRenderer(this);
-	OnWindowResize(hostWindow.GetScreenSize().x, hostWindow.GetScreenSize().y);
+	//OnWindowResize(hostWindow.GetScreenSize().x, hostWindow.GetScreenSize().y);
 
 	pipelineCache = device.createPipelineCache(vk::PipelineCacheCreateInfo());
 
@@ -132,7 +132,7 @@ bool	VulkanRenderer::InitPhysicalDevice() {
 		}
 	}
 
-	std::cout << __FUNCTION__ << " Vulkan using physical device " << gpu.getProperties().deviceName << std::endl;
+	std::cout << __FUNCTION__ << " Vulkan using physical device " << gpu.getProperties().deviceName << "\n";
 
 	return true;
 }
@@ -169,8 +169,12 @@ bool VulkanRenderer::InitGPUDevice() {
 		.setShaderClipDistance(true)
 		.setShaderCullDistance(true);
 
+	vk::PhysicalDeviceRobustness2FeaturesEXT robustness;
+
 	vk::PhysicalDeviceFeatures2 deviceFeatures;
-	deviceFeatures.setFeatures(features);
+	deviceFeatures.pNext = (void*)&robustness;
+
+	gpu.getFeatures2(&deviceFeatures);
 
 	vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
 		.setQueueCreateInfoCount(queueInfos.size())

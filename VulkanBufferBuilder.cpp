@@ -21,12 +21,12 @@ BufferBuilder::BufferBuilder(vk::Device device, VmaAllocator allocator) {
 }
 
 BufferBuilder& BufferBuilder::WithBufferUsage(vk::BufferUsageFlags flags) {
-	vkInfo.usage |= flags;
+	vkInfo.usage = flags;
 	return *this;
 }
 
 BufferBuilder& BufferBuilder::WithMemoryProperties(vk::MemoryPropertyFlags flags) {
-	vmaInfo.requiredFlags |= (VkMemoryPropertyFlags)flags;
+	vmaInfo.requiredFlags = (VkMemoryPropertyFlags)flags;
 	return *this;
 }
 
@@ -37,7 +37,7 @@ BufferBuilder& BufferBuilder::WithHostVisibility() {
 	return *this;
 }
 
-BufferBuilder& BufferBuilder::WithDeviceAddresses() {
+BufferBuilder& BufferBuilder::WithDeviceAddress() {
 	vkInfo.usage |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
 	return *this;
 }
@@ -63,6 +63,10 @@ VulkanBuffer BufferBuilder::Build(size_t byteSize, const std::string& debugName)
 	outputBuffer.allocator = sourceAllocator;
 
 	vmaCreateBuffer(sourceAllocator, (VkBufferCreateInfo*)&vkInfo, &vmaInfo, (VkBuffer*)&(outputBuffer.buffer), &outputBuffer.allocationHandle, &outputBuffer.allocationInfo);
+
+	if (vkInfo.usage & vk::BufferUsageFlagBits::eShaderDeviceAddress) {
+		outputBuffer.deviceAddress = sourceDevice.getBufferAddress(vk::BufferDeviceAddressInfo(outputBuffer.buffer));
+	}
 
 	if (!debugName.empty()) {
 		SetDebugName(sourceDevice, vk::ObjectType::eBuffer, GetVulkanHandle(outputBuffer.buffer), debugName);

@@ -48,7 +48,7 @@ namespace NCL::Rendering::Vulkan {
 
 		//If processing textures via a cmd list provided, the builder doesn't
 		bool	IsProcessing() const;
-		bool	IsProcessing(std::string debugName) const;
+		bool	IsProcessing(const std::string& debugName) const;
 		void	WaitForProcessing();
 
 	protected:

@@ -11,8 +11,11 @@ namespace NCL::Rendering::Vulkan {
 	class VulkanTexture;
 
 	extern vk::DynamicLoader dynamicLoader;
+
 	void SetNullDescriptor(vk::Device device, vk::DescriptorSetLayout layout);
-	extern std::map<vk::Device, vk::DescriptorSetLayout > nullDescriptors;
+	vk::DescriptorSetLayout GetNullDescriptor(vk::Device device);
+
+	void SetDescriptorSizes(vk::Device, vk::PhysicalDeviceDescriptorBufferPropertiesEXT& props);
 
 	template <typename T>
 	uint64_t GetVulkanHandle(T const& cppHandle) {
@@ -24,6 +27,18 @@ namespace NCL::Rendering::Vulkan {
 	void BeginDebugArea(vk::CommandBuffer buffer, const std::string& name);
 	void EndDebugArea(vk::CommandBuffer buffer);
 
+	class ScopedDebugArea {
+	public:
+		ScopedDebugArea(vk::CommandBuffer inBuffer, const std::string& inName) {
+			Vulkan::BeginDebugArea(inBuffer, inName);
+			cmdBuffer = inBuffer;
+		}
+		~ScopedDebugArea() {
+			Vulkan::EndDebugArea(cmdBuffer);
+		}
+	private:
+		vk::CommandBuffer cmdBuffer;
+	};
 
 	void ImageTransitionBarrier(vk::CommandBuffer  buffer, vk::Image i, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int firstMip = 0, int mipCount = VK_REMAINING_MIP_LEVELS, int firstLayer = 0, int layerCount = VK_REMAINING_ARRAY_LAYERS);
 
@@ -55,4 +70,13 @@ namespace NCL::Rendering::Vulkan {
 
 	void	CmdBufferEndSubmit(vk::CommandBuffer  buffer, vk::Queue queue, vk::Fence fence = {}, vk::Semaphore waitSemaphore = {}, vk::Semaphore signalSempahore = {});
 	void	CmdBufferEndSubmitWait(vk::CommandBuffer  buffer, vk::Device device, vk::Queue queue);
+
+	void WriteBufferDescriptor(vk::Device device,
+		const vk::PhysicalDeviceDescriptorBufferPropertiesEXT& props,
+		void* descriptorBufferMemory,
+		vk::DescriptorSetLayout layout,
+		size_t layoutIndex,
+		vk::DeviceAddress bufferAddress,
+		size_t bufferSize
+	);
 }

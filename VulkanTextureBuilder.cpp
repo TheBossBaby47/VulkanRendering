@@ -15,9 +15,9 @@ using namespace NCL;
 using namespace Rendering;
 using namespace Vulkan;
 
-TextureBuilder::TextureBuilder(vk::Device device, VmaAllocator allocator) {
-    sourceDevice    = device;
-    sourceAllocator = allocator;
+TextureBuilder::TextureBuilder(vk::Device inDevice, VmaAllocator inAllocator) {
+    sourceDevice    = inDevice;
+    sourceAllocator = inAllocator;
 
     generateMips    = true;
 
@@ -30,13 +30,13 @@ TextureBuilder::TextureBuilder(vk::Device device, VmaAllocator allocator) {
     layerCount      = 1;
 }
 
-TextureBuilder& TextureBuilder::WithFormat(vk::Format f) {
-    format = f;
+TextureBuilder& TextureBuilder::WithFormat(vk::Format inFormat) {
+    format = inFormat;
     return *this;
 }
 
-TextureBuilder& TextureBuilder::WithLayout(vk::ImageLayout l) {
-    layout = l;
+TextureBuilder& TextureBuilder::WithLayout(vk::ImageLayout inLayout) {
+    layout = inLayout;
     return *this;
 }
 
@@ -50,18 +50,18 @@ TextureBuilder& TextureBuilder::WithUsages(vk::ImageUsageFlags inUsages) {
     return *this;
 }
 
-TextureBuilder& TextureBuilder::WithPipeFlags(vk::PipelineStageFlags flags) {
-    pipeFlags = flags;
+TextureBuilder& TextureBuilder::WithPipeFlags(vk::PipelineStageFlags inFlags) {
+    pipeFlags = inFlags;
     return *this;
 }
 
-TextureBuilder& TextureBuilder::WithDimension(uint32_t width, uint32_t height, uint32_t depth) {
-	requestedSize = { (int)width, (int)height, (int)depth };
+TextureBuilder& TextureBuilder::WithDimension(uint32_t inWidth, uint32_t inHeight, uint32_t inDepth) {
+	requestedSize = { (int)inWidth, (int)inHeight, (int)inDepth };
     return *this;
 }
 
-TextureBuilder& TextureBuilder::WithMips(bool state) {
-    generateMips = state;
+TextureBuilder& TextureBuilder::WithMips(bool inMips) {
+    generateMips = inMips;
     return *this;
 }
 
@@ -223,9 +223,17 @@ UniqueVulkanTexture TextureBuilder::BuildCubemapFromFile(
 }
 
 UniqueVulkanTexture TextureBuilder::BuildCubemap(const std::string& debugName) {
-    UniqueVulkanTexture t;
+    vk::UniqueCommandBuffer	uniqueBuffer;
+    vk::CommandBuffer	    usingBuffer;
+    BeginTexture(debugName, uniqueBuffer, usingBuffer);
 
-    return t;
+    UniqueVulkanTexture tex = GenerateTexture(usingBuffer, requestedSize, true, debugName);
+
+    TextureJob job;
+    job.image = tex->GetImage();
+    EndTexture(debugName, uniqueBuffer, usingBuffer, job, tex);
+
+    return tex;
 }
 
 UniqueVulkanTexture	TextureBuilder::GenerateTexture(vk::CommandBuffer cmdBuffer, Vector3i dimensions, bool isCube, const std::string& debugName) {
@@ -313,12 +321,10 @@ bool	TextureBuilder::IsProcessing() const {
     return !activeJobs.empty();
 }
 
-bool	TextureBuilder::IsProcessing(std::string debugName) const {
+bool	TextureBuilder::IsProcessing(const std::string& debugName) const {
     if (activeJobs.empty()) {
         return false;
     }
-
-
     return false;
 }
 
