@@ -86,6 +86,10 @@ namespace NCL::Rendering::Vulkan {
 			return swapChainList[currentSwap]->view;
 		}
 
+		vk::Image GetCurrentSwapImage() const {
+			return swapChainList[currentSwap]->image;
+		}
+
 		vk::PhysicalDevice GetPhysicalDevice() const {
 			return gpu;
 		}

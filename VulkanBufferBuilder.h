@@ -9,7 +9,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "VulkanBuffers.h"
 
 namespace NCL::Rendering::Vulkan {
-	class VulkanBuffer;
+	struct VulkanBuffer;
 
 	class BufferBuilder	{
 	public:
