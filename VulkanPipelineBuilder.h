@@ -25,7 +25,7 @@ namespace NCL::Rendering::Vulkan {
 
 		//PipelineBuilder& WithBlendState(vk::BlendFactor srcState, vk::BlendFactor dstState, bool enabled = true);
 
-		PipelineBuilder& WithRaster(vk::CullModeFlagBits cullMode, vk::PolygonMode polyMode = vk::PolygonMode::eFill);
+		PipelineBuilder& WithRasterState(vk::CullModeFlagBits cullMode, vk::PolygonMode polyMode = vk::PolygonMode::eFill);
 
 		PipelineBuilder& WithVertexInputState(const vk::PipelineVertexInputStateCreateInfo& spec);
 

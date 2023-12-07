@@ -20,13 +20,30 @@ BufferBuilder::BufferBuilder(vk::Device device, VmaAllocator allocator) {
 	vmaInfo.usage		= VMA_MEMORY_USAGE_AUTO;
 }
 
+BufferBuilder::BufferBuilder(VkDevice device, VmaAllocator allocator) {
+	sourceDevice = device;
+	sourceAllocator = allocator;
+	vmaInfo = {};
+	vmaInfo.usage = VMA_MEMORY_USAGE_AUTO;
+}
+
 BufferBuilder& BufferBuilder::WithBufferUsage(vk::BufferUsageFlags flags) {
 	vkInfo.usage = flags;
 	return *this;
 }
 
+BufferBuilder& BufferBuilder::WithBufferUsage(VkBufferUsageFlags flags) {
+	vkInfo.usage = vk::BufferUsageFlags(flags);
+	return *this;
+}
+
 BufferBuilder& BufferBuilder::WithMemoryProperties(vk::MemoryPropertyFlags flags) {
 	vmaInfo.requiredFlags = (VkMemoryPropertyFlags)flags;
+	return *this;
+}
+
+BufferBuilder& BufferBuilder::WithMemoryProperties(VkMemoryPropertyFlags flags) {
+	vmaInfo.requiredFlags = flags;
 	return *this;
 }
 

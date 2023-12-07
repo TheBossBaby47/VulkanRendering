@@ -22,8 +22,8 @@ namespace NCL::Rendering::Vulkan {
 		TextureBuilder& WithPipeFlags(vk::PipelineStageFlags flags);
 
 		TextureBuilder& WithCommandBuffer(vk::CommandBuffer buffer);
-		TextureBuilder& WithQueue(vk::Queue queue);
-		TextureBuilder& WithPool(vk::CommandPool pool);
+		TextureBuilder& UsingQueue(vk::Queue queue);
+		TextureBuilder& UsingPool(vk::CommandPool pool);
 
 		TextureBuilder& WithMips(bool state);
 		TextureBuilder& WithDimension(uint32_t width, uint32_t height, uint32_t depth = 1);

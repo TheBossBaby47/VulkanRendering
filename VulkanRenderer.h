@@ -134,6 +134,7 @@ namespace NCL::Rendering::Vulkan {
 		bool				autoBeginDynamicRendering = true;
 
 		UniqueVulkanTexture depthBuffer;
+		vk::Format			defaultDepthFormat;
 
 		VmaAllocatorCreateInfo	allocatorInfo;
 

@@ -44,7 +44,7 @@ PipelineBuilder::PipelineBuilder(vk::Device device) : PipelineBuilderBase(device
 	inputAsmCreate.setTopology(vk::PrimitiveTopology::eTriangleList);
 }
 
-PipelineBuilder& PipelineBuilder::WithRaster(vk::CullModeFlagBits cullMode, vk::PolygonMode polyMode) {
+PipelineBuilder& PipelineBuilder::WithRasterState(vk::CullModeFlagBits cullMode, vk::PolygonMode polyMode) {
 	rasterCreate.setCullMode(cullMode).setPolygonMode(polyMode);
 	return *this;
 }

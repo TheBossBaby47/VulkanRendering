@@ -39,7 +39,7 @@ VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
 	deviceExtensions.push_back("VK_KHR_create_renderpass2");		//Now in core 1.2
 
 	instanceExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-	instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+	instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME); 
 	instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #ifdef WIN32
 	instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
@@ -48,6 +48,8 @@ VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
 	deviceLayers.push_back("VK_LAYER_LUNARG_standard_validation");
 
 	instanceLayers.push_back("VK_LAYER_KHRONOS_validation");
+
+	defaultDepthFormat = vk::Format::eD32SfloatS8Uint;
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -91,7 +93,6 @@ bool VulkanRenderer::Init() {
 	InitDefaultDescriptorPool();
 
 	hostWindow.SetRenderer(this);
-	//OnWindowResize(hostWindow.GetScreenSize().x, hostWindow.GetScreenSize().y);
 
 	pipelineCache = device.createPipelineCache(vk::PipelineCacheCreateInfo());
 
@@ -423,19 +424,17 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 	device.waitIdle();
 
 	depthBuffer = TextureBuilder(GetDevice(), GetMemoryAllocator())
-		.WithPool(GetCommandPool(CommandBuffer::Graphics))
-		.WithQueue(GetQueue(CommandBuffer::Graphics))
+		.UsingPool(GetCommandPool(CommandBuffer::Graphics))
+		.UsingQueue(GetQueue(CommandBuffer::Graphics))
 		.WithDimension(hostWindow.GetScreenSize().x, hostWindow.GetScreenSize().y)
 		.WithAspects(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
-		.WithFormat(vk::Format::eD24UnormS8Uint)
+		.WithFormat(defaultDepthFormat)
 		.WithLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
 		.WithUsages(vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled)
 		.WithPipeFlags(vk::PipelineStageFlagBits::eEarlyFragmentTests)
 		.WithMips(false)
 		.Build("Depth Buffer");
 
-	//depthBuffer = VulkanTexture::CreateDepthTexture(this,hostWindow.GetScreenSize().x, hostWindow.GetScreenSize().y);
-	
 	numFrameBuffers = InitBufferChain(*cmds);
 
 	InitDefaultRenderPass();

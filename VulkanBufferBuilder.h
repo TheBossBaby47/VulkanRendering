@@ -14,9 +14,13 @@ namespace NCL::Rendering::Vulkan {
 	class BufferBuilder	{
 	public:
 		BufferBuilder(vk::Device device, VmaAllocator allocator);
+		BufferBuilder(VkDevice device, VmaAllocator allocator);
 
 		BufferBuilder& WithBufferUsage(vk::BufferUsageFlags flags);
+		BufferBuilder& WithBufferUsage(VkBufferUsageFlags flags);
 		BufferBuilder& WithMemoryProperties(vk::MemoryPropertyFlags flags);
+		BufferBuilder& WithMemoryProperties(VkMemoryPropertyFlags flags);
+
 		BufferBuilder& WithHostVisibility();
 		BufferBuilder& WithDeviceAddress();
 		BufferBuilder& WithPersistentMapping();

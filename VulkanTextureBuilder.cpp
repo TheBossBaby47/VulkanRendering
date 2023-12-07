@@ -71,13 +71,13 @@ TextureBuilder& TextureBuilder::WithCommandBuffer(vk::CommandBuffer inBuffer) {
     return *this;
 }
 
-TextureBuilder& TextureBuilder::WithQueue(vk::Queue inQueue) {
+TextureBuilder& TextureBuilder::UsingQueue(vk::Queue inQueue) {
     assert(MessageAssert(cmdBuffer == 0, "Builder is either passed a command buffer OR uses a queue and pool!"));
     queue = inQueue;
     return *this;
 }
 
-TextureBuilder& TextureBuilder::WithPool(vk::CommandPool inPool) {
+TextureBuilder& TextureBuilder::UsingPool(vk::CommandPool inPool) {
     assert(MessageAssert(cmdBuffer == 0, "Builder is either passed a command buffer OR uses a queue and pool!"));
     pool = inPool;
     return *this;
@@ -87,6 +87,11 @@ UniqueVulkanTexture TextureBuilder::Build(const std::string& debugName) {
     vk::UniqueCommandBuffer	uniqueBuffer;
     vk::CommandBuffer	    usingBuffer;
     BeginTexture(debugName, uniqueBuffer, usingBuffer);
+
+    if (generateMips) {
+        usages |= vk::ImageUsageFlagBits::eTransferSrc;
+        usages |= vk::ImageUsageFlagBits::eTransferDst;
+    }
 
     UniqueVulkanTexture tex = GenerateTexture(usingBuffer, requestedSize, false, debugName);
 
