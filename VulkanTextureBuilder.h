@@ -27,7 +27,7 @@ namespace NCL::Rendering::Vulkan {
 
 		TextureBuilder& WithMips(bool state);
 		TextureBuilder& WithDimension(uint32_t width, uint32_t height, uint32_t depth = 1);
-
+		TextureBuilder& WithLayerCount(uint32_t layers);
 
 		//Builds an empty texture
 		UniqueVulkanTexture Build(const std::string& debugName = "");
@@ -56,6 +56,7 @@ namespace NCL::Rendering::Vulkan {
 			std::string		jobName;
 			vk::Image		image;
 			vk::Fence		workFence;
+			vk::ImageLayout endLayout;
 			VulkanBuffer	stagingBuffer;
 
 			std::vector<char*>dataSrcs;

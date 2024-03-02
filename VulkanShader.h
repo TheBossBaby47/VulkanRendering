@@ -26,6 +26,8 @@ namespace NCL::Rendering::Vulkan {
 
 	protected:			
 		VulkanShader();
+		void GetReflection(uint32_t dataSize, const void* data);
+
 
 		vk::UniqueShaderModule shaderModules[ShaderStages::MAX_SIZE];
 		std::string entryPoints[ShaderStages::MAX_SIZE];

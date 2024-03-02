@@ -26,7 +26,7 @@ vk::DescriptorSetLayoutBinding& DescriptorSetLayoutBuilder::AddDescriptors(unsig
 	return addedBindings[addedBindings.size() - 1];
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithImageSampler(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eCombinedImageSampler);
 	return *this;
 }
@@ -70,7 +70,6 @@ DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDescriptors(vk::Desc
 	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(type);
 	return *this;
 }
-
 
 DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithCreationFlags(vk::DescriptorSetLayoutCreateFlags flags) {
 	createInfo.flags |= flags;

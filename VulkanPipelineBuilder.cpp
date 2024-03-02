@@ -69,6 +69,11 @@ PipelineBuilder& PipelineBuilder::WithPass(vk::RenderPass& renderPass) {
 	return *this;
 }
 
+PipelineBuilder& PipelineBuilder::WithLayout(vk::PipelineLayout& layout) {
+	externalLayout = layout;
+	return *this;
+}
+
 PipelineBuilder& PipelineBuilder::WithColourAttachment(vk::Format f) {
 	allColourRenderingFormats.push_back(f);
 
@@ -149,19 +154,12 @@ PipelineBuilder& PipelineBuilder::WithTessellationPatchVertexCount(uint32_t cont
 }
 
 VulkanPipeline	PipelineBuilder::Build(const std::string& debugName, vk::PipelineCache cache) {
-	vk::PipelineLayoutCreateInfo pipeLayoutCreate = vk::PipelineLayoutCreateInfo()
-		.setSetLayouts(allLayouts)
-		.setPushConstantRanges(allPushConstants);
-
 	blendCreate.setAttachments(blendAttachStates);
 	blendCreate.setBlendConstants({ 1.0f, 1.0f, 1.0f, 1.0f });
 
+	vk::Format stencilRenderingFormat = vk::Format::eUndefined; //TODO
+
 	VulkanPipeline output;
-
-	vk::Format stencilRenderingFormat = vk::Format::eUndefined;
-
-
-	output.layout = sourceDevice.createPipelineLayoutUnique(pipeLayoutCreate);
 
 	pipelineCreate.setPColorBlendState(&blendCreate)
 		.setPDepthStencilState(&depthStencilCreate)
@@ -169,8 +167,22 @@ VulkanPipeline	PipelineBuilder::Build(const std::string& debugName, vk::Pipeline
 		.setPInputAssemblyState(&inputAsmCreate)
 		.setPMultisampleState(&sampleCreate)
 		.setPRasterizationState(&rasterCreate)
-		.setLayout(*output.layout)
 		.setPVertexInputState(&vertexCreate);
+
+	if (externalLayout) {
+		pipelineCreate.setLayout(externalLayout);
+	}
+	else {	
+		vk::PipelineLayoutCreateInfo pipeLayoutCreate = vk::PipelineLayoutCreateInfo()
+		.setSetLayouts(allLayouts)
+		.setPushConstantRanges(allPushConstants);
+		output.layout = sourceDevice.createPipelineLayoutUnique(pipeLayoutCreate);
+		pipelineCreate.setLayout(*output.layout);
+		if (!debugName.empty()) {
+			SetDebugName(sourceDevice, vk::ObjectType::ePipelineLayout, GetVulkanHandle(*output.layout)	 , debugName);
+		}
+	}
+
 	//We must be using dynamic rendering, better set it up!
 	vk::PipelineRenderingCreateInfoKHR			renderingCreate;
 	if (!allColourRenderingFormats.empty() || depthRenderingFormat != vk::Format::eUndefined) {
@@ -186,7 +198,7 @@ VulkanPipeline	PipelineBuilder::Build(const std::string& debugName, vk::Pipeline
 	output.pipeline			= sourceDevice.createGraphicsPipelineUnique(cache, pipelineCreate).value;
 
 	if (!debugName.empty()) {
-		SetDebugName(sourceDevice, vk::ObjectType::ePipeline, GetVulkanHandle(*output.pipeline), debugName);
+		SetDebugName(sourceDevice, vk::ObjectType::ePipeline	  , GetVulkanHandle(*output.pipeline), debugName);
 	}
 
 	return output;

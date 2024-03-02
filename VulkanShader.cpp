@@ -7,6 +7,9 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #include "VulkanShader.h"
 #include "Assets.h"
+extern "C" {
+#include "Spirv-reflect/Spirv_reflect.h"
+}
 
 using std::ifstream;
 
@@ -44,6 +47,7 @@ void VulkanShader::AddBinaryShaderModule(const std::string& fromFile, ShaderStag
 
 	if (dataSize > 0) {
 		shaderModules[stage] = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo(vk::ShaderModuleCreateFlags(), dataSize, (uint32_t*)data));
+		GetReflection(dataSize, data);
 	}
 	else {
 		std::cout << __FUNCTION__ << " Problem loading shader file " << fromFile << "!\n";
@@ -80,4 +84,10 @@ void VulkanShader::Init() {
 void	VulkanShader::FillShaderStageCreateInfo(vk::GraphicsPipelineCreateInfo &info) const {
 	info.setStageCount(stageCount);
 	info.setPStages(infos);
+}
+
+void VulkanShader::GetReflection(uint32_t dataSize, const void* data) {
+	SpvReflectShaderModule module;
+	SpvReflectResult result = spvReflectCreateShaderModule(dataSize, data, &module);
+	assert(result == SPV_REFLECT_RESULT_SUCCESS);
 }

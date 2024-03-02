@@ -31,15 +31,15 @@ namespace NCL::Rendering::Vulkan {
 			return (T&)*this;
 		}
 
-		T& WithDescriptorSetLayout(uint32_t slot, vk::DescriptorSetLayout layout) {
-			assert(slot < 32);
-			if (slot >= allLayouts.size()) {
+		T& WithDescriptorSetLayout(uint32_t setIndex, vk::DescriptorSetLayout layout) {
+			assert(setIndex < 32);
+			if (setIndex >= allLayouts.size()) {
 				vk::DescriptorSetLayout nullLayout = Vulkan::GetNullDescriptor(sourceDevice);
-				while (allLayouts.size() <= slot) {
+				while (allLayouts.size() <= setIndex) {
 					allLayouts.push_back(nullLayout);
 				}
 			}
-			allLayouts[slot] = layout;
+			allLayouts[setIndex] = layout;
 			return (T&)*this;
 		}
 

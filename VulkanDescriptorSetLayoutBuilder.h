@@ -20,7 +20,7 @@ namespace NCL::Rendering::Vulkan {
 		};
 		~DescriptorSetLayoutBuilder() {};
 
-		DescriptorSetLayoutBuilder& WithSamplers(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithImageSampler(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 		
 		DescriptorSetLayoutBuilder& WithSampledImages(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 		DescriptorSetLayoutBuilder& WithStorageImages(unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);

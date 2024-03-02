@@ -9,6 +9,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "VulkanMesh.h"
 #include "VulkanTexture.h"
 #include "VulkanTextureBuilder.h"
+#include "VulkanDescriptorSetLayoutBuilder.h"
 
 #include "VulkanUtils.h"
 
@@ -26,7 +27,8 @@ using namespace Vulkan;
 
 vk::PhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
 
-VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window) {
+VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window)
+{
 	PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = Vulkan::dynamicLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
@@ -62,7 +64,16 @@ VulkanRenderer::~VulkanRenderer() {
 
 	for (unsigned int i = 0; i < numFrameBuffers; ++i) {
 		device.destroyFramebuffer(frameBuffers[i]);
+		device.destroySemaphore(swapSemaphores[i]);
+		device.destroyFence(swapFences[i]);
 	}
+
+	for (unsigned int i = 0; i < DefaultSetLayouts::MAX_SIZE; ++i) {
+		if (defaultLayouts[i]) {
+			device.destroyDescriptorSetLayout(defaultLayouts[i]);
+		}
+	}
+
 	vmaDestroyAllocator(memoryAllocator);
 	device.destroyDescriptorPool(defaultDescriptorPool);
 	device.destroySwapchainKHR(swapChain);
@@ -91,6 +102,7 @@ bool VulkanRenderer::Init() {
 
 	InitCommandPools();
 	InitDefaultDescriptorPool();
+	InitDefaultDescriptorSetLayouts();
 
 	hostWindow.SetRenderer(this);
 
@@ -164,11 +176,11 @@ bool VulkanRenderer::InitGPUDevice() {
 			.setPQueuePriorities(&queuePriority));
 	}
 
-	vk::PhysicalDeviceFeatures features = vk::PhysicalDeviceFeatures()
-		.setMultiDrawIndirect(true)
-		.setDrawIndirectFirstInstance(true)
-		.setShaderClipDistance(true)
-		.setShaderCullDistance(true);
+	//vk::PhysicalDeviceFeatures features = vk::PhysicalDeviceFeatures()
+	//	.setMultiDrawIndirect(true)
+	//	.setDrawIndirectFirstInstance(true)
+	//	.setShaderClipDistance(true)
+	//	.setShaderCullDistance(true);
 
 	vk::PhysicalDeviceRobustness2FeaturesEXT robustness;
 
@@ -319,8 +331,14 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 			commandPools[CommandBuffer::Graphics], vk::CommandBufferLevel::ePrimary, 1));
 
 		chain->frameCmds = buffers[0];
-	}
 
+		swapSemaphores.push_back(device.createSemaphore(vk::SemaphoreCreateInfo()));
+		swapFences.push_back(device.createFence(vk::FenceCreateInfo()));
+
+		chain->acquireSempaphore = swapSemaphores[swapCycle];
+		chain->acquireFence		 = swapFences[swapCycle];
+	}
+	swapCycle = 1;
 	return (int)images.size();
 }
 
@@ -411,13 +429,17 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 
 	defaultScreenRect = vk::Rect2D({ 0,0 }, { (uint32_t)windowSize.x, (uint32_t)windowSize.y });
 
-	defaultViewport = vk::Viewport(0.0f, (float)windowSize.y, (float)windowSize.x, -(float)windowSize.y, 0.0f, 1.0f);
+	if (useOpenGLCoordinates) {
+		defaultViewport = vk::Viewport(0.0f, (float)windowSize.y, (float)windowSize.x, (float)windowSize.y, -1.0f, 1.0f);
+	}
+	else {
+		defaultViewport = vk::Viewport(0.0f, (float)windowSize.y, (float)windowSize.x, -(float)windowSize.y, 0.0f, 1.0f);
+	}
+
 	defaultScissor	= vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(windowSize.x, windowSize.y));
 
 	defaultClearValues[0] = vk::ClearValue(vk::ClearColorValue(std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.0f}));
 	defaultClearValues[1] = vk::ClearValue(vk::ClearDepthStencilValue(1.0f, 0));
-
-	vk::UniqueCommandBuffer cmds = CmdBufferBegin(device, commandPools[CommandBuffer::Graphics], "Window resize cmds");
 
 	std::cout << __FUNCTION__ << " New dimensions: " << windowSize.x << " , " << windowSize.y << "\n";
 
@@ -435,6 +457,7 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 		.WithMips(false)
 		.Build("Depth Buffer");
 
+	vk::UniqueCommandBuffer cmds = CmdBufferBegin(device, commandPools[CommandBuffer::Graphics], "Window resize cmds");
 	numFrameBuffers = InitBufferChain(*cmds);
 
 	InitDefaultRenderPass();
@@ -442,15 +465,8 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 
 	device.waitIdle();
 
-	vk::Semaphore	presentSempaphore = device.createSemaphore(vk::SemaphoreCreateInfo());
-	vk::Fence		fence = device.createFence(vk::FenceCreateInfo());
-
-	currentSwap = device.acquireNextImageKHR(swapChain, UINT64_MAX, presentSempaphore, vk::Fence()).value;	//Get swap image
-
-	device.destroySemaphore(presentSempaphore);
-	device.destroyFence(fence);
-
 	CompleteResize();
+
 	CmdBufferEndSubmitWait(*cmds, device, queueTypes[CommandBuffer::Graphics]);
 }
 
@@ -458,7 +474,35 @@ void VulkanRenderer::CompleteResize() {
 
 }
 
+void VulkanRenderer::WaitForSwapImage() {
+	TransitionUndefinedToColour(frameCmds, swapChainList[currentSwap]->image);
+
+	if (!hostWindow.IsMinimised()) {
+		vk::Result waitResult = device.waitForFences(swapChainList[currentSwap]->acquireFence, true, ~0);
+	}
+}
+
+void	VulkanRenderer::AcquireSwapImage() {
+	device.resetFences(swapChainList[currentSwap]->acquireFence);
+
+	currentSwap = device.acquireNextImageKHR(swapChain, UINT64_MAX, swapSemaphores[swapCycle], swapFences[swapCycle]).value;	//Get swap image
+
+	swapChainList[currentSwap]->acquireSempaphore = swapSemaphores[swapCycle];
+	swapChainList[currentSwap]->acquireFence = swapFences[swapCycle];
+
+	swapCycle = (swapCycle + 1) % swapSemaphores.size();
+
+	defaultBeginInfo = vk::RenderPassBeginInfo()
+		.setRenderPass(defaultRenderPass)
+		.setFramebuffer(frameBuffers[currentSwap])
+		.setRenderArea(defaultScissor)
+		.setClearValueCount(sizeof(defaultClearValues) / sizeof(vk::ClearValue))
+		.setPClearValues(defaultClearValues);
+}
+
 void	VulkanRenderer::BeginFrame() {
+	AcquireSwapImage();
+	frameCmds = swapChainList[currentSwap]->frameCmds;
 	frameCmds.reset({});
 
 	frameCmds.begin(vk::CommandBufferBeginInfo());
@@ -466,11 +510,15 @@ void	VulkanRenderer::BeginFrame() {
 	frameCmds.setScissor(0, 1, &defaultScissor);
 
 	if (autoTransitionFrameBuffer) {
-		TransitionUndefinedToColour(frameCmds, swapChainList[currentSwap]->image);
+		WaitForSwapImage();
 	}
 	if (autoBeginDynamicRendering) {
 		BeginDefaultRendering(frameCmds);
 	}
+}
+
+void VulkanRenderer::RenderFrame() {
+
 }
 
 void	VulkanRenderer::EndFrame() {
@@ -487,9 +535,6 @@ void	VulkanRenderer::EndFrame() {
 }
 
 void VulkanRenderer::SwapBuffers() {
-	vk::UniqueSemaphore	presentSempaphore;
-	vk::UniqueFence		presentFence;
-
 	if (!hostWindow.IsMinimised()) {
 		vk::CommandPool gfxPool		= commandPools[CommandBuffer::Graphics];
 		vk::Queue		gfxQueue	= queueTypes[CommandBuffer::Graphics];
@@ -497,26 +542,10 @@ void VulkanRenderer::SwapBuffers() {
 		vk::UniqueCommandBuffer cmds = CmdBufferBegin(device, gfxPool, "Window swap cmds");
 
 		TransitionColourToPresent(*cmds, swapChainList[currentSwap]->image);
+
 		CmdBufferEndSubmitWait(*cmds, device, gfxQueue);
 
-		vk::Result presentResult = gfxQueue.presentKHR(vk::PresentInfoKHR(0, nullptr, 1, &swapChain, &currentSwap, nullptr));
-
-		presentSempaphore = device.createSemaphoreUnique(vk::SemaphoreCreateInfo());
-		presentFence	  = device.createFenceUnique(vk::FenceCreateInfo());
-	
-		currentSwap = device.acquireNextImageKHR(swapChain, UINT64_MAX, *presentSempaphore, *presentFence).value;	//Get swap image
-	}
-	defaultBeginInfo = vk::RenderPassBeginInfo()
-		.setRenderPass(defaultRenderPass)
-		.setFramebuffer(frameBuffers[currentSwap])
-		.setRenderArea(defaultScissor)
-		.setClearValueCount(sizeof(defaultClearValues) / sizeof(vk::ClearValue))
-		.setPClearValues(defaultClearValues);
-
-	frameCmds = swapChainList[currentSwap]->frameCmds;
-
-	if (!hostWindow.IsMinimised()) {
-		vk::Result waitResult = device.waitForFences(*presentFence, true, ~0);
+		vk::Result presentResult = gfxQueue.presentKHR(vk::PresentInfoKHR(1, &swapChainList[currentSwap]->acquireSempaphore, 1, &swapChain, &currentSwap, nullptr));	
 	}
 }
 
@@ -622,6 +651,28 @@ void	VulkanRenderer::InitDefaultDescriptorPool(uint32_t maxSets) {
 	poolCreate.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
 
 	defaultDescriptorPool = device.createDescriptorPool(poolCreate);
+}
+
+void VulkanRenderer::InitDefaultDescriptorSetLayouts() {
+	defaultLayouts[DefaultSetLayouts::Single_Texture] = DescriptorSetLayoutBuilder(GetDevice())
+		.WithImageSampler(1, vk::ShaderStageFlagBits::eAll)
+		.Build("Default Single Texture Layout").release();
+
+	defaultLayouts[DefaultSetLayouts::Single_UBO] = DescriptorSetLayoutBuilder(GetDevice())
+		.WithUniformBuffers(1, vk::ShaderStageFlagBits::eAll)
+		.Build("Default Single UBO Layout").release();
+
+	defaultLayouts[DefaultSetLayouts::Single_SSBO] = DescriptorSetLayoutBuilder(GetDevice())
+		.WithStorageBuffers(1, vk::ShaderStageFlagBits::eAll)
+		.Build("Default Single SSBO Layout").release();
+
+	defaultLayouts[DefaultSetLayouts::Single_Storage_Image] = DescriptorSetLayoutBuilder(GetDevice())
+		.WithStorageImages(1, vk::ShaderStageFlagBits::eAll)
+		.Build("Default Single Storage Image Layout").release();
+
+	//defaultLayouts[InbuiltDescriptorSetLayouts::Single_TLAS] = DescriptorSetLayoutBuilder(GetDevice())
+	//	.WithSamplers(1, vk::ShaderStageFlagBits::eAll)
+	//	.Build("Default Single Texture Layout").release();
 }
 
 vk::UniqueDescriptorSet VulkanRenderer::BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool, uint32_t variableDescriptorCount) {

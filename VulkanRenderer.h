@@ -29,6 +29,28 @@ namespace NCL::Rendering::Vulkan {
 			MAX_BUFFERS
 		};
 	};
+	//Some auto-generated descriptor set layouts for quick prototyping
+	struct DefaultSetLayouts {
+		enum Type : uint32_t {
+			Single_Texture,
+			Single_UBO,
+			Single_SSBO,
+			Single_Storage_Image,
+			Single_TLAS,
+			MAX_SIZE
+		};
+	};
+
+	struct VulkanInitialisation {
+		int majorVersion = 1;
+		int minorVersion = 1;
+
+		std::vector<const char*>	instanceExtensions;
+		std::vector<const char*>	instanceLayers;
+
+		std::vector<const char*> deviceExtensions;
+		std::vector<const char*> deviceLayers;
+	};
 
 	class VulkanRenderer : public RendererBase {
 		friend class VulkanMesh;
@@ -43,12 +65,15 @@ namespace NCL::Rendering::Vulkan {
 	protected:
 		void OnWindowResize(int w, int h)	override;
 		void BeginFrame()		override;
+		void RenderFrame()		override;
 		void EndFrame()			override;
 		void SwapBuffers()		override;
 
 		virtual void	CompleteResize();
 		virtual void	InitDefaultRenderPass();
 		virtual void	InitDefaultDescriptorPool(uint32_t maxSets = 128);
+
+		virtual void WaitForSwapImage();
 
 		void DrawMesh(vk::CommandBuffer  to, const VulkanMesh& m, int instanceCount = 1);
 		void DrawMeshLayer(const VulkanMesh& m, unsigned int layer, vk::CommandBuffer  to, int instanceCount = 1);
@@ -58,6 +83,8 @@ namespace NCL::Rendering::Vulkan {
 		void	WriteImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
 		void	WriteStorageImageDescriptor(vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
 		void	WriteTLASDescriptor(vk::DescriptorSet set, int bindingSlot, vk::AccelerationStructureKHR tlas);
+
+		void	GetDescriptorLayout(vk::DescriptorSet set, int bindingSlot, vk::AccelerationStructureKHR tlas);
 
 		void	BeginDefaultRenderPass(vk::CommandBuffer cmds);
 		void	BeginDefaultRendering(vk::CommandBuffer  cmds);
@@ -104,7 +131,12 @@ namespace NCL::Rendering::Vulkan {
 
 		vk::Format GetDepthFormat() const;
 
-	protected:		
+		vk::DescriptorSetLayout GetDefaultLayout(DefaultSetLayouts::Type layout) {
+			return defaultLayouts[layout];
+		}
+
+	protected:
+		vk::DescriptorSetLayout defaultLayouts[DefaultSetLayouts::MAX_SIZE];		
 		vk::ClearValue			defaultClearValues[2];
 		vk::Viewport			defaultViewport;
 		vk::Rect2D				defaultScissor;	
@@ -132,6 +164,7 @@ namespace NCL::Rendering::Vulkan {
 
 		bool				autoTransitionFrameBuffer = true;
 		bool				autoBeginDynamicRendering = true;
+		bool				useOpenGLCoordinates	  = false;
 
 		UniqueVulkanTexture depthBuffer;
 		vk::Format			defaultDepthFormat;
@@ -150,7 +183,11 @@ namespace NCL::Rendering::Vulkan {
 		bool	InitDeviceQueueIndices();
 		bool	CreateDefaultFrameBuffers();
 
+		void	AcquireSwapImage();
+
 		virtual void SetupDevice(vk::PhysicalDeviceFeatures2& deviceFeatures) {}
+
+		void InitDefaultDescriptorSetLayouts();
 
 		vk::Instance		instance;	//API Instance
 		vk::PhysicalDevice	gpu;		//GPU in use
@@ -174,13 +211,19 @@ namespace NCL::Rendering::Vulkan {
 		uint32_t			numFrameBuffers			= 0;
 
 		struct SwapChain {
+			vk::Semaphore		acquireSempaphore;
+			vk::Fence			acquireFence;
 			vk::Image			image;
 			vk::ImageView		view;
 			vk::CommandBuffer	frameCmds;
 		};
 		std::vector<SwapChain*> swapChainList;
 		uint32_t				currentSwap = 0;
+		uint32_t				swapCycle = 0;
 		vk::Framebuffer* frameBuffers = nullptr;
+
+		std::vector<vk::Semaphore>	swapSemaphores;
+		std::vector<vk::Fence>		swapFences;
 
 		vk::SwapchainKHR	swapChain;
 		VmaAllocator		memoryAllocator;

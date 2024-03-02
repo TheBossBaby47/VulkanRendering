@@ -60,6 +60,12 @@ TextureBuilder& TextureBuilder::WithDimension(uint32_t inWidth, uint32_t inHeigh
     return *this;
 }
 
+TextureBuilder& TextureBuilder::WithLayerCount(uint32_t layers) {
+    layerCount = layers;
+    return *this;
+}
+
+
 TextureBuilder& TextureBuilder::WithMips(bool inMips) {
     generateMips = inMips;
     return *this;
@@ -95,7 +101,7 @@ UniqueVulkanTexture TextureBuilder::Build(const std::string& debugName) {
 
     UniqueVulkanTexture tex = GenerateTexture(usingBuffer, requestedSize, false, debugName);
 
-    ImageTransitionBarrier(usingBuffer, tex->GetImage(), vk::ImageLayout::eUndefined, layout, aspects, vk::PipelineStageFlagBits::eTopOfPipe, pipeFlags);
+    //ImageTransitionBarrier(usingBuffer, tex->GetImage(), vk::ImageLayout::eUndefined, layout, aspects, vk::PipelineStageFlagBits::eTopOfPipe, pipeFlags);
 
     TextureJob job;
     job.image = tex->GetImage();
@@ -168,6 +174,7 @@ UniqueVulkanTexture TextureBuilder::BuildFromFile(const std::string& filename) {
     TextureJob job;
     job.dataSrcs = {texData};
     job.image = tex->GetImage();
+    job.endLayout = layout;
 
     UploadTextureData(usingBuffer, job, dimensions, channels, vk::ImageAspectFlagBits::eColor);
 
@@ -186,6 +193,7 @@ UniqueVulkanTexture TextureBuilder::BuildCubemapFromFile(
 
     TextureJob job;
     job.dataSrcs.resize(6);
+    job.endLayout = layout;
 
     Vector3i dimensions[6]{ Vector3i(0, 0, 1) };
     int channels[6] = { 0 };
@@ -236,6 +244,7 @@ UniqueVulkanTexture TextureBuilder::BuildCubemap(const std::string& debugName) {
 
     TextureJob job;
     job.image = tex->GetImage();
+    job.endLayout = layout;
     EndTexture(debugName, uniqueBuffer, usingBuffer, job, tex);
 
     return tex;
@@ -246,27 +255,28 @@ UniqueVulkanTexture	TextureBuilder::GenerateTexture(vk::CommandBuffer cmdBuffer,
 
     uint32_t mipCount = VulkanTexture::GetMaxMips(dimensions);
 
+    uint32_t genLayerCount = isCube ? layerCount * 6: layerCount;
+
     auto createInfo = vk::ImageCreateInfo()
         .setImageType(dimensions.z > 1 ? vk::ImageType::e3D : vk::ImageType::e2D)
         .setExtent(vk::Extent3D(dimensions.x, dimensions.y, dimensions.z))
         .setFormat(format)
         .setUsage(usages)
         .setMipLevels(generateMips ? mipCount : 1)
-        .setArrayLayers(1);
+        //.setInitialLayout(layout)
+        .setArrayLayers(genLayerCount);
 
 	if (isCube) {
-		createInfo.setArrayLayers(6)
-                  .setFlags(vk::ImageCreateFlagBits::eCubeCompatible);
-		layerCount = 6;
+		createInfo.setFlags(vk::ImageCreateFlagBits::eCubeCompatible);
 	}
 
 	VmaAllocationCreateInfo vmaallocInfo = {};
 	vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 	vmaCreateImage(sourceAllocator, (VkImageCreateInfo*)&createInfo, &vmaallocInfo, (VkImage*)&t->image, &t->allocationHandle, &t->allocationInfo);
 
-    vk::ImageViewType viewType = vk::ImageViewType::e2D;
+    vk::ImageViewType viewType = layerCount > 1 ? vk::ImageViewType::e2DArray : vk::ImageViewType::e2D;
     if (isCube) {
-        viewType = vk::ImageViewType::eCube;
+        viewType = layerCount > 1 ? vk::ImageViewType::eCubeArray : vk::ImageViewType::eCube;
     }
     else if (dimensions.z > 1) {
         viewType = vk::ImageViewType::e3D;
@@ -280,12 +290,12 @@ UniqueVulkanTexture	TextureBuilder::GenerateTexture(vk::CommandBuffer cmdBuffer,
 
 	t->defaultView  = sourceDevice.createImageViewUnique(viewInfo);
     t->allocator    = sourceAllocator;
-    t->layerCount   = layerCount;
+    t->layerCount   = genLayerCount;
     t->aspectType   = aspects;
     t->format       = format;
     t->dimensions   = { dimensions.x, dimensions.y };
 
-	SetDebugName(sourceDevice, vk::ObjectType::eImage, GetVulkanHandle(t->image), debugName);
+	SetDebugName(sourceDevice, vk::ObjectType::eImage    , GetVulkanHandle(t->image)       , debugName);
 	SetDebugName(sourceDevice, vk::ObjectType::eImageView, GetVulkanHandle(*t->defaultView), debugName);
 
 	ImageTransitionBarrier(cmdBuffer, t->image, vk::ImageLayout::eUndefined, layout, aspects, vk::PipelineStageFlagBits::eTopOfPipe, pipeFlags);
@@ -306,9 +316,7 @@ void TextureBuilder::UploadTextureData(vk::CommandBuffer buffer, TextureJob& job
     char* gpuPtr = (char*)job.stagingBuffer.Map();
     for (int i = 0; i < job.dataSrcs.size(); ++i) {
         memcpy(gpuPtr, job.dataSrcs[i], faceSize);
-        gpuPtr += faceSize;
-        
-  
+        gpuPtr += faceSize;     
     }
     job.stagingBuffer.Unmap();
     //We'll also set up each layer of the image to accept new transfers
@@ -319,7 +327,7 @@ void TextureBuilder::UploadTextureData(vk::CommandBuffer buffer, TextureJob& job
 
     buffer.copyBufferToImage(job.stagingBuffer.buffer, job.image, vk::ImageLayout::eTransferDstOptimal, copyInfo);
 
-    ImageTransitionBarrier(buffer, job.image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, aspectFlags, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, 0, 1);
+    ImageTransitionBarrier(buffer, job.image, vk::ImageLayout::eTransferDstOptimal, job.endLayout, aspectFlags, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, 0, 1);
 }
 
 bool	TextureBuilder::IsProcessing() const {

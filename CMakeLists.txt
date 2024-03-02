@@ -44,9 +44,16 @@ set(Source_Files
 )
 source_group("Source Files" FILES ${Source_Files})
 
+set(SPIRV_Reflect_Files
+	"${Vulkan_INCLUDE_DIR}../../Source/SPIRV-Reflect/SPIRV_Reflect.h" 
+    "${Vulkan_INCLUDE_DIR}../../Source/SPIRV-Reflect/SPIRV_Reflect.c"
+)
+source_group("SPIRV Reflect" FILES ${SPIRV_Reflect_Files})
+
 set(ALL_FILES
     ${Header_Files}
     ${Source_Files}
+    ${SPIRV_Reflect_Files}
 )
 
 ################################################################################
@@ -55,23 +62,23 @@ set(ALL_FILES
 add_library(${PROJECT_NAME} STATIC ${ALL_FILES})
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE
-    <vulkan/vulkan.hpp>
-	<vma/vk_mem_alloc.h>
-    <memory>
-    <unordered_set>
-    <map>
-    <vector>
-    <set>
-    <string>
-    <fstream>
-    <iostream>
-    <string>
-    <iosfwd>
+    "$<$<COMPILE_LANGUAGE:CXX>:<vulkan/vulkan.hpp$<ANGLE-R>>"
+	"$<$<COMPILE_LANGUAGE:CXX>:<vma/vk_mem_alloc.h$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<memory$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<unordered_set$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<map$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<vector$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<set$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<string$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<fstream$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<iostream$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<string$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<iosfwd$<ANGLE-R>>"
     
-    <Vector.h>
-    <Matrix.h>
+    "$<$<COMPILE_LANGUAGE:CXX>:<Vector.h$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<Matrix.h$<ANGLE-R>>"
 
-    <Quaternion.h>
+    "$<$<COMPILE_LANGUAGE:CXX>:<Quaternion.h$<ANGLE-R>>"
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -86,12 +93,9 @@ add_compile_definitions(VK_NO_PROTOTYPES)
 # Compile and link options
 ################################################################################
 target_include_directories (${PROJECT_NAME} 
-    PUBLIC ${VULKAN_INCLUDE_DIRS}
-)	
-
-target_include_directories (${PROJECT_NAME} 
     PUBLIC ${Vulkan_INCLUDE_DIR}
     PUBLIC ${CMAKE_SOURCE_DIR}/NCLCoreClasses
+    PUBLIC ${Vulkan_INCLUDE_DIR}../../Source/
 )	
 
 ################################################################################

@@ -37,6 +37,8 @@ namespace NCL::Rendering::Vulkan {
 
 		PipelineBuilder& WithPass(vk::RenderPass& renderPass);
 
+		PipelineBuilder& WithLayout(vk::PipelineLayout& layout);
+
 
 		//Depth attachment that does nothing?
 		PipelineBuilder& WithDepthAttachment(vk::Format depthFormat);
@@ -78,6 +80,8 @@ namespace NCL::Rendering::Vulkan {
 		vk::PipelineDynamicStateCreateInfo			dynamicCreate;
 		vk::PipelineVertexInputStateCreateInfo		vertexCreate;
 		vk::PipelineTessellationStateCreateInfo		tessellationCreate;
+
+		vk::PipelineLayout							externalLayout;
 
 		std::vector< vk::PipelineColorBlendAttachmentState>			blendAttachStates;
 

@@ -14,4 +14,8 @@ struct VulkanPipeline {
 	operator vk::Pipeline() const {
 		return *pipeline;
 	}
+
+	operator vk::PipelineLayout() const {
+		return *layout;
+	}
 };
