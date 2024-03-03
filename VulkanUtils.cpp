@@ -91,8 +91,6 @@ void	Vulkan::ImageTransitionBarrier(vk::CommandBuffer  cmdBuffer, vk::Image imag
 	vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, 
 	int mipLevel, int mipCount, int layer, int layerCount) {
 
-	layerCount = 1;
-
 	vk::ImageMemoryBarrier memoryBarrier = vk::ImageMemoryBarrier()
 		.setSubresourceRange(vk::ImageSubresourceRange(aspect, mipLevel, mipCount, layer, layerCount))
 		.setImage(image)

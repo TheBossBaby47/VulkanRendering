@@ -33,7 +33,7 @@ namespace NCL::Rendering::Vulkan {
 
 		PipelineBuilder& WithTopology(vk::PrimitiveTopology topology);
 
-		PipelineBuilder& WithShader(const UniqueVulkanShader& shader);
+		PipelineBuilder& WithShader(const UniqueVulkanShader& shader, bool copySetInfo = false);
 
 		PipelineBuilder& WithPass(vk::RenderPass& renderPass);
 

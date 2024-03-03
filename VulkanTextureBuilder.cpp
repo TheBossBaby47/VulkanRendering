@@ -319,6 +319,7 @@ void TextureBuilder::UploadTextureData(vk::CommandBuffer buffer, TextureJob& job
         gpuPtr += faceSize;     
     }
     job.stagingBuffer.Unmap();
+
     //We'll also set up each layer of the image to accept new transfers
     ImageTransitionBarrier(buffer, job.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectFlags, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, 0, 1, 0);
     vk::BufferImageCopy copyInfo;

@@ -10,6 +10,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "SmartTypes.h"
 
 namespace NCL::Rendering::Vulkan {
+	class DescriptorSetLayoutBuilder;
 	class VulkanShader;
 	class ShaderBuilder {
 	public:
@@ -27,11 +28,11 @@ namespace NCL::Rendering::Vulkan {
 		ShaderBuilder& AddBinary(ShaderStages::Type stage, const std::string& name, const std::string& entry = "main");
 
 		UniqueVulkanShader Build(const std::string& debugName = "");
-
+	protected:
+		void AddReflectionData(uint32_t dataSize, const void* data, vk::ShaderStageFlags stage, std::vector< std::vector<vk::DescriptorSetLayoutBinding>>& sets, std::vector<vk::PushConstantRange> &constants);
 	protected:
 		std::string shaderFiles[ShaderStages::MAX_SIZE];
 		std::string entryPoints[ShaderStages::MAX_SIZE];
-		vk::Device sourceDevice;
-
+		vk::Device	sourceDevice;
 	};
 }

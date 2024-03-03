@@ -6,6 +6,7 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #include "VulkanShader.h"
+#include "VulkanDescriptorSetLayoutBuilder.h"
 #include "Assets.h"
 extern "C" {
 #include "Spirv-reflect/Spirv_reflect.h"
@@ -57,6 +58,11 @@ void VulkanShader::AddBinaryShaderModule(const std::string& fromFile, ShaderStag
 	entryPoints[stage] = entryPoint;
 }
 
+void VulkanShader::AddBinaryShaderModule(ShaderStages::Type stage, vk::UniqueShaderModule& shaderModule, const std::string& entryPoint) {
+	shaderModule.swap(shaderModules[stage]);
+	entryPoints[stage]		= entryPoint;
+}
+
 void VulkanShader::Init() {
 	stageCount = 0;
 	for (int i = 0; i < ShaderStages::MAX_SIZE; ++i) {
@@ -82,7 +88,7 @@ void VulkanShader::Init() {
 }
 
 void	VulkanShader::FillShaderStageCreateInfo(vk::GraphicsPipelineCreateInfo &info) const {
-	info.setStageCount(stageCount);
+	info.setStageCount(stageCount); 
 	info.setPStages(infos);
 }
 
@@ -90,4 +96,46 @@ void VulkanShader::GetReflection(uint32_t dataSize, const void* data) {
 	SpvReflectShaderModule module;
 	SpvReflectResult result = spvReflectCreateShaderModule(dataSize, data, &module);
 	assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+
+	uint32_t count = 0;
+	result = spvReflectEnumerateDescriptorSets(&module, &count, NULL);
+	assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+	std::vector<SpvReflectDescriptorSet*> sets(count);
+	result = spvReflectEnumerateDescriptorSets(&module, &count, sets.data());
+	assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+
+	spvReflectDestroyShaderModule(&module);
+}
+
+bool	VulkanShader::GetDescriptorSetLayout(uint32_t index, const vk::UniqueDescriptorSetLayout* out) {
+	if (index >= allLayouts.size())
+	{
+		return false;
+	}
+	out = &allLayouts[index];
+	return true;
+}
+
+void	VulkanShader::FillDescriptorSetLayouts(std::vector<vk::DescriptorSetLayout>& layouts) {
+	layouts.resize(allLayouts.size());
+	for (int i = 0; i < allLayouts.size(); ++i) {
+		layouts[i] = *allLayouts[i];
+	}
+}
+
+void	VulkanShader::FillPushConstants(std::vector<vk::PushConstantRange>& constants) {
+	constants.clear();
+	constants = pushConstants;
+}
+
+void VulkanShader::AddDescriptorSetLayoutState(std::vector<std::vector<vk::DescriptorSetLayoutBinding>>& data, std::vector<vk::UniqueDescriptorSetLayout>& layouts) {
+	allLayoutsBindings	= std::move(data);
+	allLayouts			= std::move(layouts);
+}
+
+void VulkanShader::AddPushConstantState(std::vector<vk::PushConstantRange>& data) {
+	pushConstants = data;
 }

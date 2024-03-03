@@ -655,19 +655,19 @@ void	VulkanRenderer::InitDefaultDescriptorPool(uint32_t maxSets) {
 
 void VulkanRenderer::InitDefaultDescriptorSetLayouts() {
 	defaultLayouts[DefaultSetLayouts::Single_Texture] = DescriptorSetLayoutBuilder(GetDevice())
-		.WithImageSampler(1, vk::ShaderStageFlagBits::eAll)
+		.WithImageSamplers(0, 1, vk::ShaderStageFlagBits::eAll)
 		.Build("Default Single Texture Layout").release();
 
 	defaultLayouts[DefaultSetLayouts::Single_UBO] = DescriptorSetLayoutBuilder(GetDevice())
-		.WithUniformBuffers(1, vk::ShaderStageFlagBits::eAll)
+		.WithUniformBuffers(1, 1, vk::ShaderStageFlagBits::eAll)
 		.Build("Default Single UBO Layout").release();
 
 	defaultLayouts[DefaultSetLayouts::Single_SSBO] = DescriptorSetLayoutBuilder(GetDevice())
-		.WithStorageBuffers(1, vk::ShaderStageFlagBits::eAll)
+		.WithStorageBuffers(2, 1, vk::ShaderStageFlagBits::eAll)
 		.Build("Default Single SSBO Layout").release();
 
 	defaultLayouts[DefaultSetLayouts::Single_Storage_Image] = DescriptorSetLayoutBuilder(GetDevice())
-		.WithStorageImages(1, vk::ShaderStageFlagBits::eAll)
+		.WithStorageImages(3, 1, vk::ShaderStageFlagBits::eAll)
 		.Build("Default Single Storage Image Layout").release();
 
 	//defaultLayouts[InbuiltDescriptorSetLayouts::Single_TLAS] = DescriptorSetLayoutBuilder(GetDevice())

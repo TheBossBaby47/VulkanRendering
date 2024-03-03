@@ -59,8 +59,12 @@ PipelineBuilder& PipelineBuilder::WithTopology(vk::PrimitiveTopology topology) {
 	return *this;
 }
 
-PipelineBuilder& PipelineBuilder::WithShader(const UniqueVulkanShader& shader) {
+PipelineBuilder& PipelineBuilder::WithShader(const UniqueVulkanShader& shader, bool copySetInfo) {
 	shader->FillShaderStageCreateInfo(pipelineCreate);
+	if (copySetInfo) {
+		shader.get()->FillDescriptorSetLayouts(allLayouts);
+		shader.get()->FillPushConstants(allPushConstants);
+	}
 	return *this;
 }
 
@@ -173,9 +177,10 @@ VulkanPipeline	PipelineBuilder::Build(const std::string& debugName, vk::Pipeline
 		pipelineCreate.setLayout(externalLayout);
 	}
 	else {	
-		vk::PipelineLayoutCreateInfo pipeLayoutCreate = vk::PipelineLayoutCreateInfo()
-		.setSetLayouts(allLayouts)
-		.setPushConstantRanges(allPushConstants);
+		vk::PipelineLayoutCreateInfo pipeLayoutCreate = vk::PipelineLayoutCreateInfo();
+		pipeLayoutCreate.setSetLayouts(allLayouts);
+		pipeLayoutCreate.setPushConstantRanges(allPushConstants);
+
 		output.layout = sourceDevice.createPipelineLayoutUnique(pipeLayoutCreate);
 		pipelineCreate.setLayout(*output.layout);
 		if (!debugName.empty()) {

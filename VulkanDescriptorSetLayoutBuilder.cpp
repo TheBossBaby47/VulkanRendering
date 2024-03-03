@@ -15,9 +15,9 @@ using namespace NCL;
 using namespace Rendering;
 using namespace Vulkan;
 
-vk::DescriptorSetLayoutBinding& DescriptorSetLayoutBuilder::AddDescriptors(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+vk::DescriptorSetLayoutBinding& DescriptorSetLayoutBuilder::AddDescriptors(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
 	vk::DescriptorSetLayoutBinding binding = vk::DescriptorSetLayoutBinding()
-		.setBinding((uint32_t)addedBindings.size())
+		.setBinding(index)
 		.setDescriptorCount(count)
 		.setStageFlags(inShaders);
 
@@ -26,48 +26,63 @@ vk::DescriptorSetLayoutBinding& DescriptorSetLayoutBuilder::AddDescriptors(unsig
 	return addedBindings[addedBindings.size() - 1];
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithImageSampler(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eCombinedImageSampler);
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithSamplers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eSampler);
 	return *this;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithSampledImages(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eSampledImage);
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithUniformTexelBuffers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eUniformTexelBuffer);
 	return *this;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithStorageImages(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageImage);
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithStorageTexelBuffers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageTexelBuffer);
 	return *this;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eUniformBuffer);
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithImageSamplers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eCombinedImageSampler);
 	return *this;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageBuffer);
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithSampledImages(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eSampledImage);
 	return *this;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDynamicUniformBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eUniformBufferDynamic);
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithStorageImages(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageImage);
 	return *this;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDynamicStorageBuffers(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageBufferDynamic);
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithUniformBuffers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eUniformBuffer);
 	return *this;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithAccelStructures(unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eAccelerationStructureKHR);
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithStorageBuffers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageBuffer);
 	return *this;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDescriptors(vk::DescriptorType type, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	AddDescriptors(count, inShaders, bindingFlags).setDescriptorType(type);
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDynamicUniformBuffers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eUniformBufferDynamic);
+	return *this;
+}
+
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDynamicStorageBuffers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eStorageBufferDynamic);
+	return *this;
+}
+
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithAccelStructures(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(vk::DescriptorType::eAccelerationStructureKHR);
+	return *this;
+}
+
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDescriptors(uint32_t index, vk::DescriptorType type, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	AddDescriptors(index, count, inShaders, bindingFlags).setDescriptorType(type);
 	return *this;
 }
 
