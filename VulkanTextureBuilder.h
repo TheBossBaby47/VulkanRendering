@@ -19,7 +19,7 @@ namespace NCL::Rendering::Vulkan {
 		TextureBuilder& WithLayout(vk::ImageLayout layout);
 		TextureBuilder& WithAspects(vk::ImageAspectFlags aspects);
 		TextureBuilder& WithUsages(vk::ImageUsageFlags usages);
-		TextureBuilder& WithPipeFlags(vk::PipelineStageFlags flags);
+		TextureBuilder& WithPipeFlags(vk::PipelineStageFlags2 flags);
 
 		TextureBuilder& WithCommandBuffer(vk::CommandBuffer buffer);
 		TextureBuilder& UsingQueue(vk::Queue queue);
@@ -97,7 +97,7 @@ namespace NCL::Rendering::Vulkan {
 		vk::ImageLayout			layout;
 		vk::ImageAspectFlags	aspects;
 		vk::ImageUsageFlags		usages;
-		vk::PipelineStageFlags	pipeFlags;
+		vk::PipelineStageFlags2	pipeFlags;
 
 		vk::Device			sourceDevice;
 		VmaAllocator		sourceAllocator;

@@ -25,7 +25,7 @@ TextureBuilder::TextureBuilder(vk::Device inDevice, VmaAllocator inAllocator) {
     layout      = vk::ImageLayout::eShaderReadOnlyOptimal;
     usages      = vk::ImageUsageFlagBits::eSampled;
     aspects     = vk::ImageAspectFlagBits::eColor;
-    pipeFlags   = vk::PipelineStageFlagBits::eFragmentShader;
+    pipeFlags   = vk::PipelineStageFlagBits2::eFragmentShader;
 
     layerCount      = 1;
 }
@@ -50,7 +50,7 @@ TextureBuilder& TextureBuilder::WithUsages(vk::ImageUsageFlags inUsages) {
     return *this;
 }
 
-TextureBuilder& TextureBuilder::WithPipeFlags(vk::PipelineStageFlags inFlags) {
+TextureBuilder& TextureBuilder::WithPipeFlags(vk::PipelineStageFlags2 inFlags) {
     pipeFlags = inFlags;
     return *this;
 }
@@ -298,7 +298,7 @@ UniqueVulkanTexture	TextureBuilder::GenerateTexture(vk::CommandBuffer cmdBuffer,
 	SetDebugName(sourceDevice, vk::ObjectType::eImage    , GetVulkanHandle(t->image)       , debugName);
 	SetDebugName(sourceDevice, vk::ObjectType::eImageView, GetVulkanHandle(*t->defaultView), debugName);
 
-	ImageTransitionBarrier(cmdBuffer, t->image, vk::ImageLayout::eUndefined, layout, aspects, vk::PipelineStageFlagBits::eTopOfPipe, pipeFlags);
+	ImageTransitionBarrier(cmdBuffer, t->image, vk::ImageLayout::eUndefined, layout, aspects, vk::PipelineStageFlagBits2::eTopOfPipe, pipeFlags);
 
     return UniqueVulkanTexture(t);
 }
@@ -321,14 +321,14 @@ void TextureBuilder::UploadTextureData(vk::CommandBuffer buffer, TextureJob& job
     job.stagingBuffer.Unmap();
 
     //We'll also set up each layer of the image to accept new transfers
-    ImageTransitionBarrier(buffer, job.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectFlags, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, 0, 1, 0);
+    ImageTransitionBarrier(buffer, job.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectFlags, vk::PipelineStageFlagBits2::eHost, vk::PipelineStageFlagBits2::eTransfer, 0, 1, 0);
     vk::BufferImageCopy copyInfo;
     copyInfo.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor).setMipLevel(0).setLayerCount((uint32_t)job.dataSrcs.size());
     copyInfo.imageExtent = vk::Extent3D(dimensions.x, dimensions.y, 1);
 
     buffer.copyBufferToImage(job.stagingBuffer.buffer, job.image, vk::ImageLayout::eTransferDstOptimal, copyInfo);
 
-    ImageTransitionBarrier(buffer, job.image, vk::ImageLayout::eTransferDstOptimal, job.endLayout, aspectFlags, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, 0, 1);
+    ImageTransitionBarrier(buffer, job.image, vk::ImageLayout::eTransferDstOptimal, job.endLayout, aspectFlags, vk::PipelineStageFlagBits2::eTransfer, vk::PipelineStageFlagBits2::eFragmentShader, 0, 1);
 }
 
 bool	TextureBuilder::IsProcessing() const {

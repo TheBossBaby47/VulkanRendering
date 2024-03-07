@@ -14,7 +14,6 @@ namespace NCL::Rendering::Vulkan {
 	public:
 		friend class VulkanRenderer;
 		VulkanMesh();
-		//VulkanMesh(const std::string& filename);
 		~VulkanMesh();
 
 		const vk::PipelineVertexInputStateCreateInfo& GetVertexInputState() const {
@@ -22,6 +21,9 @@ namespace NCL::Rendering::Vulkan {
 		}
 
 		void BindToCommandBuffer(vk::CommandBuffer  buffer) const;
+
+		void Draw(vk::CommandBuffer  to, int instanceCount = 1);
+		void DrawLayer(unsigned int layer, vk::CommandBuffer  to, int instanceCount = 1);
 
 		void UploadToGPU(RendererBase* renderer) override;
 

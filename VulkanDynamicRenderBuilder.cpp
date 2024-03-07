@@ -17,6 +17,18 @@ DynamicRenderBuilder::DynamicRenderBuilder() {
 	layerCount		= 1;
 }
 
+DynamicRenderBuilder& DynamicRenderBuilder::WithColourAttachment(vk::RenderingAttachmentInfoKHR& info) {
+	colourAttachments.push_back(info);
+	return *this;
+}
+
+
+DynamicRenderBuilder& DynamicRenderBuilder::WithDepthAttachment(vk::RenderingAttachmentInfoKHR& info) {
+	depthAttachment = info;
+	//TODO check stencil state, maybe in Build...
+	return *this;
+}
+
 DynamicRenderBuilder& DynamicRenderBuilder::WithColourAttachment(
 	vk::ImageView	texture, vk::ImageLayout layout, bool clear, vk::ClearValue clearValue
 )
@@ -58,7 +70,7 @@ DynamicRenderBuilder& DynamicRenderBuilder::WithLayerCount(int count) {
 	return *this;
 }
 
-DynamicRenderBuilder& DynamicRenderBuilder::WithSecondaryBuffers() {
+DynamicRenderBuilder& DynamicRenderBuilder::WithSecondaryCommandBuffers() {
 	renderInfo.flags |= vk::RenderingFlagBits::eContentsSecondaryCommandBuffers;
 	return *this;
 }

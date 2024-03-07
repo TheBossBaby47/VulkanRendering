@@ -82,7 +82,12 @@ VulkanBuffer BufferBuilder::Build(size_t byteSize, const std::string& debugName)
 	vmaCreateBuffer(sourceAllocator, (VkBufferCreateInfo*)&vkInfo, &vmaInfo, (VkBuffer*)&(outputBuffer.buffer), &outputBuffer.allocationHandle, &outputBuffer.allocationInfo);
 
 	if (vkInfo.usage & vk::BufferUsageFlagBits::eShaderDeviceAddress) {
-		outputBuffer.deviceAddress = sourceDevice.getBufferAddress(vk::BufferDeviceAddressInfo(outputBuffer.buffer));
+		outputBuffer.deviceAddress = sourceDevice.getBufferAddress(
+			{
+				.buffer = outputBuffer.buffer
+			}
+			//vk::BufferDeviceAddressInfo()
+		);
 	}
 
 	if (!debugName.empty()) {

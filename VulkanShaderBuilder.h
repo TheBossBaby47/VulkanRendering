@@ -29,8 +29,6 @@ namespace NCL::Rendering::Vulkan {
 
 		UniqueVulkanShader Build(const std::string& debugName = "");
 	protected:
-		void AddReflectionData(uint32_t dataSize, const void* data, vk::ShaderStageFlags stage, std::vector< std::vector<vk::DescriptorSetLayoutBinding>>& sets, std::vector<vk::PushConstantRange> &constants);
-	protected:
 		std::string shaderFiles[ShaderStages::MAX_SIZE];
 		std::string entryPoints[ShaderStages::MAX_SIZE];
 		vk::Device	sourceDevice;

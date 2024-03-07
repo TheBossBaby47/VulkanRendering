@@ -18,7 +18,15 @@ VulkanCompute::VulkanCompute(vk::Device device, const std::string& filename) : l
 	Assets::ReadBinaryFile(Assets::SHADERDIR + "VK/" + filename, &data, dataSize);
 
 	if (dataSize > 0) {
-		computeModule = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo(vk::ShaderModuleCreateFlags(), dataSize, (uint32_t*)data));
+		computeModule = device.createShaderModuleUnique(//vk::ShaderModuleCreateInfo(
+			{
+				.flags = {},
+				.codeSize = dataSize,
+				.pCode = (uint32_t*)data
+
+			}	
+			//vk::ShaderModuleCreateFlags(), dataSize, (uint32_t*)data)		
+		);
 	}
 	else {
 		std::cout << __FUNCTION__ << " Problem loading shader file " << filename << "!\n";
@@ -27,6 +35,11 @@ VulkanCompute::VulkanCompute(vk::Device device, const std::string& filename) : l
 	info.stage	= vk::ShaderStageFlagBits::eCompute;
 	info.module = *computeModule;
 	info.pName	= "main";
+
+	AddReflectionData(dataSize, data, vk::ShaderStageFlagBits::eCompute);
+	BuildLayouts(device);
+
+	delete data;
 }
 
 void	VulkanCompute::FillShaderStageCreateInfo(vk::ComputePipelineCreateInfo& pipeInfo) const {

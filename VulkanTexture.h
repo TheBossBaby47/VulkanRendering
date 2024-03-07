@@ -44,7 +44,7 @@ namespace NCL::Rendering::Vulkan {
 
 		void GenerateMipMaps(vk::CommandBuffer  buffer, 
 								vk::ImageLayout endLayout = vk::ImageLayout::eShaderReadOnlyOptimal, 
-								vk::PipelineStageFlags endFlags = vk::PipelineStageFlagBits::eFragmentShader);
+								vk::PipelineStageFlags2 endFlags = vk::PipelineStageFlagBits2::eFragmentShader);
 
 		static size_t GetMaxMips(Vector2i dimensions) {
 			return (size_t)std::floor(log2(float(std::min(dimensions.x, dimensions.y)))) + 1;

@@ -18,7 +18,8 @@ namespace NCL::Rendering::Vulkan {
 		ComputePipelineBuilder(vk::Device device);
 		~ComputePipelineBuilder() {}
 
-		ComputePipelineBuilder& WithShader(UniqueVulkanCompute& shader);
+		ComputePipelineBuilder& WithShader(const UniqueVulkanCompute& shader);
+		ComputePipelineBuilder& WithShader(const VulkanCompute& shader);
 
 		VulkanPipeline	Build(const std::string& debugName = "", vk::PipelineCache cache = {});
 

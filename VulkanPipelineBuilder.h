@@ -21,10 +21,6 @@ namespace NCL::Rendering::Vulkan {
 		PipelineBuilder(vk::Device device);
 		~PipelineBuilder() {}
 
-		//PipelineBuilder& WithDepthState(vk::CompareOp op, bool depthEnabled, bool writeEnabled, bool stencilEnabled = false);
-
-		//PipelineBuilder& WithBlendState(vk::BlendFactor srcState, vk::BlendFactor dstState, bool enabled = true);
-
 		PipelineBuilder& WithRasterState(vk::CullModeFlagBits cullMode, vk::PolygonMode polyMode = vk::PolygonMode::eFill);
 
 		PipelineBuilder& WithVertexInputState(const vk::PipelineVertexInputStateCreateInfo& spec);
@@ -33,12 +29,12 @@ namespace NCL::Rendering::Vulkan {
 
 		PipelineBuilder& WithTopology(vk::PrimitiveTopology topology);
 
-		PipelineBuilder& WithShader(const UniqueVulkanShader& shader, bool copySetInfo = false);
+		PipelineBuilder& WithShader(const UniqueVulkanShader& shader);
+		PipelineBuilder& WithShader(const VulkanShader& shader);
 
 		PipelineBuilder& WithPass(vk::RenderPass& renderPass);
 
 		PipelineBuilder& WithLayout(vk::PipelineLayout& layout);
-
 
 		//Depth attachment that does nothing?
 		PipelineBuilder& WithDepthAttachment(vk::Format depthFormat);
@@ -51,21 +47,12 @@ namespace NCL::Rendering::Vulkan {
 		PipelineBuilder& WithStencilOpsFront(vk::StencilOpState state);
 		PipelineBuilder& WithStencilOpsBack(vk::StencilOpState state);
 
-		//PipelineBuilder& WithDepthAttachment(vk::Format depthFormat);
-		//PipelineBuilder& WithDepthAttachment(vk::Format depthFormat, vk::CompareOp op, bool depthEnabled, bool writeEnable);
-
-
-		//PipelineBuilder& WithDepthStencilFormat(vk::Format combinedFormat);
-		//PipelineBuilder& WithDepthFormat(vk::Format depthFormat);
-		//PipelineBuilder& WithColourFormats(const std::vector<vk::Format>& formats);
-
 		//A colour attachment, no blending
 		PipelineBuilder& WithColourAttachment(vk::Format f); 
 		//A colour attachment, with blending
 		PipelineBuilder& WithColourAttachment(vk::Format f, vk::BlendFactor srcState, vk::BlendFactor dstState);
 		//A colour attachment, with user-defined state
 		PipelineBuilder& WithColourAttachment(vk::Format f, vk::PipelineColorBlendAttachmentState state);
-
 
 		VulkanPipeline	Build(const std::string& debugName = "", vk::PipelineCache cache = {});
 

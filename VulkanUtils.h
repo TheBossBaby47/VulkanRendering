@@ -40,7 +40,8 @@ namespace NCL::Rendering::Vulkan {
 		vk::CommandBuffer cmdBuffer;
 	};
 
-	void ImageTransitionBarrier(vk::CommandBuffer  buffer, vk::Image i, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage, int firstMip = 0, int mipCount = VK_REMAINING_MIP_LEVELS, int firstLayer = 0, int layerCount = VK_REMAINING_ARRAY_LAYERS);
+	void ImageTransitionBarrier(vk::CommandBuffer  buffer, vk::Image i, vk::ImageMemoryBarrier2 barrier);
+	void ImageTransitionBarrier(vk::CommandBuffer  buffer, vk::Image i, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect, vk::PipelineStageFlags2 srcStage, vk::PipelineStageFlags2 dstStage, uint32_t firstMip = 0, uint32_t mipCount = VK_REMAINING_MIP_LEVELS, uint32_t firstLayer = 0, uint32_t layerCount = VK_REMAINING_ARRAY_LAYERS);
 
 	void TransitionUndefinedToColour(vk::CommandBuffer  buffer, vk::Image t);
 	void TransitionColourToPresent(vk::CommandBuffer  buffer, vk::Image t);
@@ -51,16 +52,18 @@ namespace NCL::Rendering::Vulkan {
 	void TransitionSamplerToColour(vk::CommandBuffer  buffer, vk::Image t);
 	void TransitionSamplerToDepth(vk::CommandBuffer  buffer, vk::Image t, bool doStencil = false);
 
-
 	vk::AccessFlags	 DefaultAccessFlags(vk::ImageLayout forLayout);
 	vk::AccessFlags2 DefaultAccessFlags2(vk::ImageLayout forLayout);
 
-	vk::UniqueDescriptorSet BuildUniqueDescriptorSet(vk::Device device, vk::DescriptorSetLayout  layout, vk::DescriptorPool pool, uint32_t variableDescriptorCount = 0);
+	vk::UniqueDescriptorSet CreateDescriptorSet(vk::Device device, vk::DescriptorPool pool, vk::DescriptorSetLayout  layout, uint32_t variableDescriptorCount = 0);
 
-	void	WriteBufferDescriptor(vk::Device device, vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset = 0, size_t range = 0);
-	void	WriteImageDescriptor(vk::Device device, vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
-	void	WriteStorageImageDescriptor(vk::Device device, vk::DescriptorSet set, int bindingNum, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
-	void	WriteTLASDescriptor(vk::Device device, vk::DescriptorSet set, int bindingSlot, vk::AccelerationStructureKHR tlas);
+	void	WriteDescriptor(vk::Device device, vk::WriteDescriptorSet setInfo, vk::DescriptorBufferInfo bufferInfo);
+	void	WriteDescriptor(vk::Device device, vk::WriteDescriptorSet setInfo, vk::DescriptorImageInfo imageInfo);
+
+	void	WriteBufferDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset = 0, size_t range = VK_WHOLE_SIZE);
+	void	WriteImageDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingSlot, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
+	void	WriteStorageImageDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingSlot, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
+	void	WriteTLASDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingSlot, vk::AccelerationStructureKHR tlas);
 
 	vk::UniqueCommandBuffer	CmdBufferCreate(vk::Device device, vk::CommandPool fromPool, const std::string& debugName = "");
 	vk::UniqueCommandBuffer	CmdBufferBegin(vk::Device device, vk::CommandPool fromPool, const std::string& debugName = "");

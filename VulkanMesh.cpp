@@ -6,7 +6,7 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #include "VulkanMesh.h"
-#include "VulkanRenderer.h"
+#include "Vulkanrenderer.h"
 #include "VulkanUtils.h"
 #include "VulkanBufferBuilder.h"
 
@@ -37,10 +37,6 @@ size_t attributeSizes[] = {
 
 VulkanMesh::VulkanMesh()	{
 }
-
-//VulkanMesh::VulkanMesh(const std::string& filename) : Mesh(filename) {
-//	debugName = filename;
-//}
 
 VulkanMesh::~VulkanMesh()	{
 }
@@ -119,9 +115,14 @@ void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::Comman
 		attributeMask |= (1 << attributeType);
 	}
 
-	vertexInputState = vk::PipelineVertexInputStateCreateInfo({},
-		(uint32_t)attributeBindings.size(), &attributeBindings[0],
-		(uint32_t)attributeDescriptions.size(), &attributeDescriptions[0]
+	vertexInputState = vk::PipelineVertexInputStateCreateInfo(
+		{
+			.flags = {},
+			.vertexBindingDescriptionCount = (uint32_t)attributeBindings.size(),
+			.pVertexBindingDescriptions = &attributeBindings[0],
+			.vertexAttributeDescriptionCount = (uint32_t)attributeDescriptions.size(),
+			.pVertexAttributeDescriptions = &attributeDescriptions[0]
+		}
 	);
 
 	size_t vertexDataSize	= vSize * GetVertexCount();
@@ -174,6 +175,35 @@ void VulkanMesh::BindToCommandBuffer(vk::CommandBuffer  buffer) const {
 		buffer.bindIndexBuffer(gpuBuffer.buffer, indexOffset, indexType);
 	}
 }
+
+void VulkanMesh::DrawLayer(unsigned int layer, vk::CommandBuffer  to, int instanceCount) {
+	VkDeviceSize baseOffset = 0;
+
+	const SubMesh* sm = GetSubMesh(layer);
+
+	BindToCommandBuffer(to);
+
+	if (GetIndexCount() > 0) {
+		to.drawIndexed(sm->count, instanceCount, sm->start, sm->base, 0);
+	}
+	else {
+		to.draw(sm->count, instanceCount, sm->start, 0);
+	}
+}
+
+void VulkanMesh::Draw(vk::CommandBuffer  to, int instanceCount) {
+	VkDeviceSize baseOffset = 0;
+
+	BindToCommandBuffer(to);
+
+	if (GetIndexCount() > 0) {
+		to.drawIndexed(GetIndexCount(), instanceCount, 0, 0, 0);
+	}
+	else {
+		to.draw(GetVertexCount(), instanceCount, 0, 0);
+	}
+}
+
 
 vk::PrimitiveTopology VulkanMesh::GetVulkanTopology() const {
 	assert((uint32_t)primType < GeometryPrimitive::MAX_PRIM);

@@ -17,15 +17,15 @@ namespace NCL::Rendering::Vulkan {
 		};
 		~DescriptorSetLayoutBuilder() {};
 
-
-		DescriptorSetLayoutBuilder& WithSamplers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithDescriptor(vk::DescriptorSetLayoutBinding binding, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithDescriptors(const std::vector<vk::DescriptorSetLayoutBinding>& bindings, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithDescriptor(vk::DescriptorType type, uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 
 		DescriptorSetLayoutBuilder& WithUniformTexelBuffers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 		DescriptorSetLayoutBuilder& WithStorageTexelBuffers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
-
-
-		DescriptorSetLayoutBuilder& WithImageSamplers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 		
+		DescriptorSetLayoutBuilder& WithSamplers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
+		DescriptorSetLayoutBuilder& WithImageSamplers(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);	
 		DescriptorSetLayoutBuilder& WithSampledImages(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 		DescriptorSetLayoutBuilder& WithStorageImages(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 
@@ -37,15 +37,11 @@ namespace NCL::Rendering::Vulkan {
 
 		DescriptorSetLayoutBuilder& WithAccelStructures(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
 
-		DescriptorSetLayoutBuilder& WithDescriptors(uint32_t index, vk::DescriptorType type, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
-
 		DescriptorSetLayoutBuilder& WithCreationFlags(vk::DescriptorSetLayoutCreateFlags flags);
 
 		vk::UniqueDescriptorSetLayout Build(const std::string& debugName = "");
 
 	protected:
-		vk::DescriptorSetLayoutBinding& AddDescriptors(uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders = vk::ShaderStageFlagBits::eAll, vk::DescriptorBindingFlags = (vk::DescriptorBindingFlags)0);
-
 		vk::Device sourceDevice;
 
 		std::vector< vk::DescriptorSetLayoutBinding>	addedBindings;

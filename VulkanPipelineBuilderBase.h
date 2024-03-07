@@ -26,21 +26,20 @@ namespace NCL::Rendering::Vulkan {
 			return (T&)*this;
 		}
 
-		T& WithPushConstant(vk::ShaderStageFlags flags, uint32_t offset, uint32_t size) {
-			allPushConstants.emplace_back(vk::PushConstantRange(flags, offset, size));
+		T& WithDescriptorSetLayout(uint32_t setIndex, vk::DescriptorSetLayout layout) {
+			assert(setIndex < 32);
+			if (setIndex >= userLayouts.size()) {
+				vk::DescriptorSetLayout nullLayout = Vulkan::GetNullDescriptor(sourceDevice);
+				while (userLayouts.size() <= setIndex) {
+					userLayouts.push_back(nullLayout);
+				}
+			}
+			userLayouts[setIndex] = layout;
 			return (T&)*this;
 		}
 
-		T& WithDescriptorSetLayout(uint32_t setIndex, vk::DescriptorSetLayout layout) {
-			assert(setIndex < 32);
-			if (setIndex >= allLayouts.size()) {
-				vk::DescriptorSetLayout nullLayout = Vulkan::GetNullDescriptor(sourceDevice);
-				while (allLayouts.size() <= setIndex) {
-					allLayouts.push_back(nullLayout);
-				}
-			}
-			allLayouts[setIndex] = layout;
-			return (T&)*this;
+		T& WithDescriptorSetLayout(uint32_t setIndex, const vk::UniqueDescriptorSetLayout& layout) {
+			return WithDescriptorSetLayout(setIndex, *layout);
 		}
 
 		T& WithDescriptorBuffers() {
@@ -57,12 +56,28 @@ namespace NCL::Rendering::Vulkan {
 		}
 		~PipelineBuilderBase() {}
 
+		void FinaliseDescriptorLayouts() {
+			allLayouts.clear();
+			for (int i = 0; i < reflectionLayouts.size(); ++i) {
+				if (userLayouts.size() > i && userLayouts[i] != Vulkan::GetNullDescriptor(sourceDevice)) {
+					allLayouts.push_back(userLayouts[i]);
+				}
+				else {
+					allLayouts.push_back(reflectionLayouts[i]);
+				}
+			}
+		}
+
 	protected:
 		P pipelineCreate;
 		vk::PipelineLayout	layout;
 		vk::Device			sourceDevice;
 
 		std::vector< vk::DescriptorSetLayout> allLayouts;
+
+		std::vector< vk::DescriptorSetLayout> reflectionLayouts;
+		std::vector< vk::DescriptorSetLayout> userLayouts;
+
 		std::vector< vk::PushConstantRange> allPushConstants;
 	};
 }

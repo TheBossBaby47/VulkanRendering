@@ -7,7 +7,7 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #include "VulkanRenderPassBuilder.h"
 #include "VulkanTexture.h"
-#include "VulkanRenderer.h"
+#include "Vulkanrenderer.h"
 #include "VulkanUtils.h"
 
 using namespace NCL;

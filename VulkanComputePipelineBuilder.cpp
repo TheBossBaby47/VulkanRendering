@@ -14,15 +14,27 @@ using namespace Rendering;
 using namespace Vulkan;
 
 ComputePipelineBuilder::ComputePipelineBuilder(vk::Device device) : PipelineBuilderBase(device){
+
 }
 
-ComputePipelineBuilder& ComputePipelineBuilder::WithShader(UniqueVulkanCompute& compute) {
+ComputePipelineBuilder& ComputePipelineBuilder::WithShader(const UniqueVulkanCompute& compute) {
 	compute->FillShaderStageCreateInfo(pipelineCreate);
+	compute.get()->FillDescriptorSetLayouts(reflectionLayouts);
+	compute.get()->FillPushConstants(allPushConstants);
+	return *this;
+}
+
+ComputePipelineBuilder& ComputePipelineBuilder::WithShader(const VulkanCompute& compute) {
+	compute.FillShaderStageCreateInfo(pipelineCreate);
+	compute.FillDescriptorSetLayouts(reflectionLayouts);
+	compute.FillPushConstants(allPushConstants);
 	return *this;
 }
 
 VulkanPipeline	ComputePipelineBuilder::Build(const std::string& debugName, vk::PipelineCache cache) {
 	VulkanPipeline output;
+
+	FinaliseDescriptorLayouts();
 
 	vk::PipelineLayoutCreateInfo pipeLayoutCreate = vk::PipelineLayoutCreateInfo()
 		.setSetLayoutCount((uint32_t)allLayouts.size())

@@ -28,7 +28,10 @@ namespace NCL::Rendering::Vulkan {
 			bool withStencil = false
 		);
 
-		DynamicRenderBuilder& WithSecondaryBuffers();
+		DynamicRenderBuilder& WithColourAttachment(vk::RenderingAttachmentInfoKHR& info);
+		DynamicRenderBuilder& WithDepthAttachment(vk::RenderingAttachmentInfoKHR& info);
+
+		DynamicRenderBuilder& WithSecondaryCommandBuffers();
 
 		DynamicRenderBuilder& WithRenderArea(vk::Rect2D area);
 

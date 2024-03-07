@@ -17,6 +17,7 @@ set(Header_Files
     "VulkanPipelineBuilder.h"
     "VulkanRenderer.h"
     "VulkanRenderPassBuilder.h"
+    "VulkanShaderBase.h"
     "VulkanShader.h"
     "VulkanShaderBuilder.h"
     "VulkanTexture.h"
@@ -37,6 +38,7 @@ set(Source_Files
     "VulkanPipelineBuilder.cpp"
     "VulkanRenderer.cpp"
     "VulkanRenderPassBuilder.cpp"
+    "VulkanShaderBase.cpp"
     "VulkanShader.cpp"
     "VulkanShaderBuilder.cpp"
 	"VulkanBufferBuilder.cpp"
@@ -87,7 +89,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 add_compile_definitions(VULKAN_HPP_DISPATCH_LOADER_DYNAMIC)
 add_compile_definitions(VK_NO_PROTOTYPES)
-
+add_compile_definitions(VULKAN_HPP_NO_STRUCT_CONSTRUCTORS)
 
 ################################################################################
 # Compile and link options

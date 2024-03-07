@@ -59,14 +59,20 @@ PipelineBuilder& PipelineBuilder::WithTopology(vk::PrimitiveTopology topology) {
 	return *this;
 }
 
-PipelineBuilder& PipelineBuilder::WithShader(const UniqueVulkanShader& shader, bool copySetInfo) {
+PipelineBuilder& PipelineBuilder::WithShader(const UniqueVulkanShader& shader) {
 	shader->FillShaderStageCreateInfo(pipelineCreate);
-	if (copySetInfo) {
-		shader.get()->FillDescriptorSetLayouts(allLayouts);
+		shader.get()->FillDescriptorSetLayouts(reflectionLayouts);
 		shader.get()->FillPushConstants(allPushConstants);
-	}
 	return *this;
 }
+
+PipelineBuilder& PipelineBuilder::WithShader(const VulkanShader& shader) {
+	shader.FillShaderStageCreateInfo(pipelineCreate);
+	shader.FillDescriptorSetLayouts(reflectionLayouts);
+	shader.FillPushConstants(allPushConstants);
+	return *this;
+}
+
 
 PipelineBuilder& PipelineBuilder::WithPass(vk::RenderPass& renderPass) {
 	pipelineCreate.setRenderPass(renderPass);
@@ -164,6 +170,8 @@ VulkanPipeline	PipelineBuilder::Build(const std::string& debugName, vk::Pipeline
 	vk::Format stencilRenderingFormat = vk::Format::eUndefined; //TODO
 
 	VulkanPipeline output;
+
+	FinaliseDescriptorLayouts();
 
 	pipelineCreate.setPColorBlendState(&blendCreate)
 		.setPDepthStencilState(&depthStencilCreate)

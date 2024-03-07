@@ -5,7 +5,7 @@ Author:Rich Davison
 Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
-#include "VulkanRenderer.h"
+#include "Vulkanrenderer.h"
 #include "VulkanMesh.h"
 #include "VulkanTexture.h"
 #include "VulkanTextureBuilder.h"
@@ -24,34 +24,31 @@ using namespace NCL::Win32Code;
 using namespace NCL;
 using namespace Rendering;
 using namespace Vulkan;
-
-vk::PhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
-
-VulkanRenderer::VulkanRenderer(Window& window) : RendererBase(window)
+VulkanRenderer::VulkanRenderer(Window& window, const VulkanInitialisation& vkInitInfo) : RendererBase(window)
 {
 	PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = Vulkan::dynamicLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
+	vkInit = vkInitInfo;
+
 	allocatorInfo		= {};
 
-	deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-	deviceExtensions.push_back("VK_KHR_dynamic_rendering");		//Now in core 1.3
-	deviceExtensions.push_back("VK_KHR_maintenance4");			//Now in core 1.3
-	deviceExtensions.push_back("VK_KHR_depth_stencil_resolve");	//Now in core 1.2
-	deviceExtensions.push_back("VK_KHR_create_renderpass2");		//Now in core 1.2
+	InitInstance(vkInit);
 
-	instanceExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-	instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME); 
-	instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#ifdef WIN32
-	instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#endif
-	
-	deviceLayers.push_back("VK_LAYER_LUNARG_standard_validation");
+	InitPhysicalDevice(vkInit);
 
-	instanceLayers.push_back("VK_LAYER_KHRONOS_validation");
+	InitGPUDevice(vkInit);
+	InitMemoryAllocator(vkInit);
 
-	defaultDepthFormat = vk::Format::eD32SfloatS8Uint;
+	InitCommandPools();
+	InitDefaultDescriptorPool();
+	InitDefaultDescriptorSetLayouts();
+
+	hostWindow.SetRenderer(this);
+
+	pipelineCache = device.createPipelineCache(vk::PipelineCacheCreateInfo());
+
+	frameCmds = swapChainList[currentSwap]->cmdBuffer;
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -59,7 +56,7 @@ VulkanRenderer::~VulkanRenderer() {
 	depthBuffer.reset();
 
 	for (auto& i : swapChainList) {
-		device.destroyImageView(i->view);
+		device.destroyImageView(i->colourView);
 	};
 
 	for (unsigned int i = 0; i < numFrameBuffers; ++i) {
@@ -92,38 +89,21 @@ VulkanRenderer::~VulkanRenderer() {
 	delete[] frameBuffers;
 }
 
-bool VulkanRenderer::Init() {
-	InitInstance();
-
-	InitPhysicalDevice();
-
-	InitGPUDevice();
-	InitMemoryAllocator();
-
-	InitCommandPools();
-	InitDefaultDescriptorPool();
-	InitDefaultDescriptorSetLayouts();
-
-	hostWindow.SetRenderer(this);
-
-	pipelineCache = device.createPipelineCache(vk::PipelineCacheCreateInfo());
-
-	frameCmds = swapChainList[currentSwap]->frameCmds;
-
-	return true;
-}
-
-bool VulkanRenderer::InitInstance() {
-	vk::ApplicationInfo appInfo = vk::ApplicationInfo(this->hostWindow.GetTitle().c_str());
-
-	appInfo.apiVersion = VK_MAKE_VERSION(majorVersion, minorVersion, 0);
-
-	vk::InstanceCreateInfo instanceInfo = vk::InstanceCreateInfo(vk::InstanceCreateFlags(), &appInfo)
-		.setEnabledExtensionCount((uint32_t)instanceExtensions.size())
-		.setPpEnabledExtensionNames(instanceExtensions.data())
-		.setEnabledLayerCount((uint32_t)instanceLayers.size())
-		.setPpEnabledLayerNames(instanceLayers.data());
-
+bool VulkanRenderer::InitInstance(const VulkanInitialisation& vkInit) {
+	vk::ApplicationInfo appInfo = {
+		.pApplicationName = this->hostWindow.GetTitle().c_str(),
+		.apiVersion = VK_MAKE_VERSION(vkInit.majorVersion, vkInit.minorVersion, 0)
+	};
+		
+	vk::InstanceCreateInfo instanceInfo = {
+		.flags = {},
+		.pApplicationInfo = &appInfo,
+		.enabledLayerCount = (uint32_t)vkInit.instanceLayers.size(),
+		.ppEnabledLayerNames = vkInit.instanceLayers.data(),
+		.enabledExtensionCount = (uint32_t)vkInit.instanceExtensions.size(),
+		.ppEnabledExtensionNames = vkInit.instanceExtensions.data()
+	};
+		
 	instance = vk::createInstance(instanceInfo);
 
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
@@ -131,7 +111,7 @@ bool VulkanRenderer::InitInstance() {
 	return true;
 }
 
-bool	VulkanRenderer::InitPhysicalDevice() {
+bool	VulkanRenderer::InitPhysicalDevice(const VulkanInitialisation& vkInit) {
 	auto enumResult = instance.enumeratePhysicalDevices();
 
 	if (enumResult.empty()) {
@@ -150,7 +130,7 @@ bool	VulkanRenderer::InitPhysicalDevice() {
 	return true;
 }
 
-bool VulkanRenderer::InitGPUDevice() {
+bool VulkanRenderer::InitGPUDevice(const VulkanInitialisation& vkInit) {
 	InitSurface();
 	InitDeviceQueueIndices();
 
@@ -161,48 +141,43 @@ bool VulkanRenderer::InitGPUDevice() {
 	queueInfos.emplace_back(vk::DeviceQueueCreateInfo()
 		.setQueueCount(1)
 		.setQueueFamilyIndex(gfxQueueIndex)
-		.setPQueuePriorities(&queuePriority));
+		.setPQueuePriorities(&queuePriority)
+	);
 
 	if (computeQueueIndex != gfxQueueIndex){
 		queueInfos.emplace_back(vk::DeviceQueueCreateInfo()
 			.setQueueCount(1)
 			.setQueueFamilyIndex(computeQueueIndex)
-			.setPQueuePriorities(&queuePriority));
+			.setPQueuePriorities(&queuePriority)
+		);
 	}
 	if (copyQueueIndex != gfxQueueIndex) {
 		queueInfos.emplace_back(vk::DeviceQueueCreateInfo()
 			.setQueueCount(1)
 			.setQueueFamilyIndex(copyQueueIndex)
-			.setPQueuePriorities(&queuePriority));
+			.setPQueuePriorities(&queuePriority)
+		);
 	}
 
-	//vk::PhysicalDeviceFeatures features = vk::PhysicalDeviceFeatures()
-	//	.setMultiDrawIndirect(true)
-	//	.setDrawIndirectFirstInstance(true)
-	//	.setShaderClipDistance(true)
-	//	.setShaderCullDistance(true);
-
-	vk::PhysicalDeviceRobustness2FeaturesEXT robustness;
-
 	vk::PhysicalDeviceFeatures2 deviceFeatures;
-	deviceFeatures.pNext = (void*)&robustness;
-
 	gpu.getFeatures2(&deviceFeatures);
+
+	if (!vkInit.features.empty()) {
+		for (int i = 1; i < vkInit.features.size(); ++i) {
+			vk::PhysicalDeviceFeatures2* prevStruct = (vk::PhysicalDeviceFeatures2*)vkInit.features[i-1];
+			prevStruct->pNext = vkInit.features[i];
+		}
+		deviceFeatures.pNext = vkInit.features[0];
+	}
 
 	vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
 		.setQueueCreateInfoCount(queueInfos.size())
 		.setPQueueCreateInfos(queueInfos.data());
-
-	SetupDevice(deviceFeatures);	
-
-	vk::PhysicalDeviceDynamicRenderingFeaturesKHR dynamicRendering(true);
-	dynamicRendering.pNext = deviceFeatures.pNext;
-	deviceFeatures.pNext = &dynamicRendering;
 	
-	createInfo.setEnabledLayerCount((uint32_t)deviceLayers.size())
-		.setPpEnabledLayerNames(deviceLayers.data())
-		.setEnabledExtensionCount((uint32_t)deviceExtensions.size())
-		.setPpEnabledExtensionNames(deviceExtensions.data());
+	createInfo.setEnabledLayerCount((uint32_t)vkInit.deviceLayers.size())
+		.setPpEnabledLayerNames(vkInit.deviceLayers.data())
+		.setEnabledExtensionCount((uint32_t)vkInit.deviceExtensions.size())
+		.setPpEnabledExtensionNames(vkInit.deviceExtensions.data());
 
 	createInfo.pNext = &deviceFeatures;
 
@@ -224,12 +199,13 @@ bool VulkanRenderer::InitSurface() {
 #ifdef _WIN32
 	Win32Window* window = (Win32Window*)&hostWindow;
 
-	vk::Win32SurfaceCreateInfoKHR createInfo;
-
-	createInfo = vk::Win32SurfaceCreateInfoKHR(
-		vk::Win32SurfaceCreateFlagsKHR(), window->GetInstance(), window->GetHandle());
-
-	surface = instance.createWin32SurfaceKHR(createInfo);
+	surface = instance.createWin32SurfaceKHR(
+		{
+			.flags = {},
+			.hinstance = window->GetInstance(),
+			.hwnd = window->GetHandle()
+		}
+	);
 #endif
 
 	auto formats = gpu.getSurfaceFormatsKHR(surface);
@@ -248,7 +224,7 @@ bool VulkanRenderer::InitSurface() {
 
 uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 	vk::SwapchainKHR oldChain					= swapChain;
-	std::vector<SwapChain*> oldSwapChainList	= swapChainList;
+	std::vector<FrameState*> oldSwapChainList	= swapChainList;
 	swapChainList.clear();
 
 	vk::SurfaceCapabilitiesKHR surfaceCaps = gpu.getSurfaceCapabilitiesKHR(surface);
@@ -300,7 +276,7 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 
 	if (!oldSwapChainList.empty()) {
 		for (unsigned int i = 0; i < numFrameBuffers; ++i) {
-			device.destroyImageView(oldSwapChainList[i]->view);
+			device.destroyImageView(oldSwapChainList[i]->colourView);
 			delete oldSwapChainList[i];
 		}
 	}
@@ -311,49 +287,76 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 	auto images = device.getSwapchainImagesKHR(swapChain);
 
 	for (auto& i : images) {
-		vk::ImageViewCreateInfo viewCreate = vk::ImageViewCreateInfo()
+		FrameState* chain = new FrameState();
+
+		chain->colourImage = i;
+
+		ImageTransitionBarrier(cmdBuffer, i, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+
+		chain->colourView = device.createImageView(
+			vk::ImageViewCreateInfo()
 			.setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))
 			.setFormat(surfaceFormat)
 			.setImage(i)
-			.setViewType(vk::ImageViewType::e2D);
-
-		SwapChain* chain = new SwapChain();
-
-		chain->image = i;
-
-		ImageTransitionBarrier(cmdBuffer, i, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput);
-
-		chain->view = device.createImageView(viewCreate);
+			.setViewType(vk::ImageViewType::e2D)	
+		);
 
 		swapChainList.push_back(chain);
 
-		auto buffers = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo(
-			commandPools[CommandBuffer::Graphics], vk::CommandBufferLevel::ePrimary, 1));
+		auto buffers = device.allocateCommandBuffers(	
+			{
+				.commandPool = commandPools[CommandBuffer::Graphics],
+				.level = vk::CommandBufferLevel::ePrimary,
+				.commandBufferCount = 1
+			}
+		);
+		 
+		chain->cmdBuffer = buffers[0];
 
-		chain->frameCmds = buffers[0];
-
-		swapSemaphores.push_back(device.createSemaphore(vk::SemaphoreCreateInfo()));
-		swapFences.push_back(device.createFence(vk::FenceCreateInfo()));
+		swapSemaphores.push_back(device.createSemaphore({}));
+		swapFences.push_back(device.createFence({}));
 
 		chain->acquireSempaphore = swapSemaphores[swapCycle];
 		chain->acquireFence		 = swapFences[swapCycle];
+
+		chain->defaultViewport		= defaultViewport;
+		chain->defaultScissor		= defaultScissor;
+		chain->defaultScreenRect	= defaultScreenRect;
+		
+		chain->colourFormat = surfaceFormat;
+
+		chain->depthImage	= depthBuffer->GetImage();
+		chain->depthView	= depthBuffer->GetDefaultView();
+		chain->depthFormat	= depthBuffer->GetFormat();
 	}
 	swapCycle = 1;
 	return (int)images.size();
 }
 
 void	VulkanRenderer::InitCommandPools() {	
-	commandPools[CommandBuffer::Graphics] = device.createCommandPool(vk::CommandPoolCreateInfo(
-		vk::CommandPoolCreateFlagBits::eResetCommandBuffer, gfxQueueIndex));
+	commandPools[CommandBuffer::Graphics] = device.createCommandPool(
+		{
+			.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+			.queueFamilyIndex = gfxQueueIndex
+		}
+	);
 
-	commandPools[CommandBuffer::AsyncCompute] = device.createCommandPool(vk::CommandPoolCreateInfo(
-		vk::CommandPoolCreateFlagBits::eResetCommandBuffer, computeQueueIndex));
+	commandPools[CommandBuffer::AsyncCompute] = device.createCommandPool(
+		{
+			.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+			.queueFamilyIndex = computeQueueIndex
+		}
+	);
 
-	commandPools[CommandBuffer::Copy] = device.createCommandPool(vk::CommandPoolCreateInfo(
-		vk::CommandPoolCreateFlagBits::eResetCommandBuffer, copyQueueIndex));
+	commandPools[CommandBuffer::Copy] = device.createCommandPool(
+		{
+			.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+			.queueFamilyIndex = copyQueueIndex
+		}	
+	);
 }
 
-void	VulkanRenderer::InitMemoryAllocator() {
+void	VulkanRenderer::InitMemoryAllocator(const VulkanInitialisation& vkInit) {
 	VmaVulkanFunctions funcs = {};
 	funcs.vkGetInstanceProcAddr = ::vk::defaultDispatchLoaderDynamic.vkGetInstanceProcAddr;
 	funcs.vkGetDeviceProcAddr   = ::vk::defaultDispatchLoaderDynamic.vkGetDeviceProcAddr;
@@ -361,6 +364,8 @@ void	VulkanRenderer::InitMemoryAllocator() {
 	allocatorInfo.physicalDevice = gpu;
 	allocatorInfo.device	= device;
 	allocatorInfo.instance	= instance;
+
+	allocatorInfo.flags |= vkInit.vmaFlags;
 
 	allocatorInfo.pVulkanFunctions = &funcs;
 	vmaCreateAllocator(&allocatorInfo, &memoryAllocator);
@@ -429,7 +434,7 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 
 	defaultScreenRect = vk::Rect2D({ 0,0 }, { (uint32_t)windowSize.x, (uint32_t)windowSize.y });
 
-	if (useOpenGLCoordinates) {
+	if (vkInit.useOpenGLCoordinates) {
 		defaultViewport = vk::Viewport(0.0f, (float)windowSize.y, (float)windowSize.x, (float)windowSize.y, -1.0f, 1.0f);
 	}
 	else {
@@ -450,10 +455,10 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 		.UsingQueue(GetQueue(CommandBuffer::Graphics))
 		.WithDimension(hostWindow.GetScreenSize().x, hostWindow.GetScreenSize().y)
 		.WithAspects(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
-		.WithFormat(defaultDepthFormat)
+		.WithFormat(vkInit.depthStencilFormat)
 		.WithLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
 		.WithUsages(vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled)
-		.WithPipeFlags(vk::PipelineStageFlagBits::eEarlyFragmentTests)
+		.WithPipeFlags(vk::PipelineStageFlagBits2::eEarlyFragmentTests)
 		.WithMips(false)
 		.Build("Depth Buffer");
 
@@ -475,7 +480,7 @@ void VulkanRenderer::CompleteResize() {
 }
 
 void VulkanRenderer::WaitForSwapImage() {
-	TransitionUndefinedToColour(frameCmds, swapChainList[currentSwap]->image);
+	TransitionUndefinedToColour(frameCmds, swapChainList[currentSwap]->colourImage);
 
 	if (!hostWindow.IsMinimised()) {
 		vk::Result waitResult = device.waitForFences(swapChainList[currentSwap]->acquireFence, true, ~0);
@@ -490,6 +495,13 @@ void	VulkanRenderer::AcquireSwapImage() {
 	swapChainList[currentSwap]->acquireSempaphore = swapSemaphores[swapCycle];
 	swapChainList[currentSwap]->acquireFence = swapFences[swapCycle];
 
+	swapChainList[currentSwap]->defaultViewport		= defaultViewport;
+	swapChainList[currentSwap]->defaultScissor		= defaultScissor;
+	swapChainList[currentSwap]->defaultScreenRect	= defaultScreenRect;
+
+	swapChainList[currentSwap]->colourFormat = surfaceFormat;
+	swapChainList[currentSwap]->depthFormat  = depthBuffer->GetFormat();
+
 	swapCycle = (swapCycle + 1) % swapSemaphores.size();
 
 	defaultBeginInfo = vk::RenderPassBeginInfo()
@@ -502,17 +514,17 @@ void	VulkanRenderer::AcquireSwapImage() {
 
 void	VulkanRenderer::BeginFrame() {
 	AcquireSwapImage();
-	frameCmds = swapChainList[currentSwap]->frameCmds;
+	frameCmds = swapChainList[currentSwap]->cmdBuffer;
 	frameCmds.reset({});
 
 	frameCmds.begin(vk::CommandBufferBeginInfo());
 	frameCmds.setViewport(0, 1, &defaultViewport);
 	frameCmds.setScissor(0, 1, &defaultScissor);
 
-	if (autoTransitionFrameBuffer) {
+	if (vkInit.autoTransitionFrameBuffer) {
 		WaitForSwapImage();
 	}
-	if (autoBeginDynamicRendering) {
+	if (vkInit.autoBeginDynamicRendering) {
 		BeginDefaultRendering(frameCmds);
 	}
 }
@@ -522,7 +534,7 @@ void VulkanRenderer::RenderFrame() {
 }
 
 void	VulkanRenderer::EndFrame() {
-	if (autoBeginDynamicRendering) {
+	if (vkInit.autoBeginDynamicRendering) {
 		frameCmds.endRendering();
 	}
 
@@ -541,11 +553,19 @@ void VulkanRenderer::SwapBuffers() {
 
 		vk::UniqueCommandBuffer cmds = CmdBufferBegin(device, gfxPool, "Window swap cmds");
 
-		TransitionColourToPresent(*cmds, swapChainList[currentSwap]->image);
+		TransitionColourToPresent(*cmds, swapChainList[currentSwap]->colourImage);
 
 		CmdBufferEndSubmitWait(*cmds, device, gfxQueue);
 
-		vk::Result presentResult = gfxQueue.presentKHR(vk::PresentInfoKHR(1, &swapChainList[currentSwap]->acquireSempaphore, 1, &swapChain, &currentSwap, nullptr));	
+		vk::Result presentResult = gfxQueue.presentKHR(
+			{
+				.waitSemaphoreCount = 1,
+				.pWaitSemaphores = &swapChainList[currentSwap]->acquireSempaphore,
+				.swapchainCount = 1,
+				.pSwapchains = &swapChain,
+				.pImageIndices = &currentSwap
+			}
+		);	
 	}
 }
 
@@ -612,7 +632,7 @@ bool VulkanRenderer::CreateDefaultFrameBuffers() {
 		.setRenderPass(defaultRenderPass);
 
 	for (uint32_t i = 0; i < numFrameBuffers; ++i) {
-		attachments[0]	= swapChainList[i]->view;
+		attachments[0]	= swapChainList[i]->colourView;
 		attachments[1]	= *depthBuffer->defaultView;
 		frameBuffers[i] = device.createFramebuffer(createInfo);
 	}
@@ -659,15 +679,15 @@ void VulkanRenderer::InitDefaultDescriptorSetLayouts() {
 		.Build("Default Single Texture Layout").release();
 
 	defaultLayouts[DefaultSetLayouts::Single_UBO] = DescriptorSetLayoutBuilder(GetDevice())
-		.WithUniformBuffers(1, 1, vk::ShaderStageFlagBits::eAll)
+		.WithUniformBuffers(0, 1, vk::ShaderStageFlagBits::eAll)
 		.Build("Default Single UBO Layout").release();
 
 	defaultLayouts[DefaultSetLayouts::Single_SSBO] = DescriptorSetLayoutBuilder(GetDevice())
-		.WithStorageBuffers(2, 1, vk::ShaderStageFlagBits::eAll)
+		.WithStorageBuffers(0, 1, vk::ShaderStageFlagBits::eAll)
 		.Build("Default Single SSBO Layout").release();
 
 	defaultLayouts[DefaultSetLayouts::Single_Storage_Image] = DescriptorSetLayoutBuilder(GetDevice())
-		.WithStorageImages(3, 1, vk::ShaderStageFlagBits::eAll)
+		.WithStorageImages(0, 1, vk::ShaderStageFlagBits::eAll)
 		.Build("Default Single Storage Image Layout").release();
 
 	//defaultLayouts[InbuiltDescriptorSetLayouts::Single_TLAS] = DescriptorSetLayoutBuilder(GetDevice())
@@ -675,61 +695,10 @@ void VulkanRenderer::InitDefaultDescriptorSetLayouts() {
 	//	.Build("Default Single Texture Layout").release();
 }
 
-vk::UniqueDescriptorSet VulkanRenderer::BuildUniqueDescriptorSet(vk::DescriptorSetLayout  layout, vk::DescriptorPool pool, uint32_t variableDescriptorCount) {
-	if (!pool) {
-		pool = defaultDescriptorPool;
-	}
-	return Vulkan::BuildUniqueDescriptorSet(GetDevice(), layout, pool, variableDescriptorCount);
-}
-
-void	VulkanRenderer::WriteBufferDescriptor(vk::DescriptorSet set, int bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset, size_t range) {
-	Vulkan::WriteBufferDescriptor(GetDevice(), set, bindingSlot, bufferType, buff, offset, range);
-}
-
-void	VulkanRenderer::WriteImageDescriptor(vk::DescriptorSet set, int bindingSlot, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
-	Vulkan::WriteImageDescriptor(GetDevice(), set, bindingSlot, subIndex, view, sampler, layout);
-}
-
-void	VulkanRenderer::WriteStorageImageDescriptor(vk::DescriptorSet set, int bindingSlot, int subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
-	Vulkan::WriteStorageImageDescriptor(GetDevice(), set, bindingSlot, subIndex, view, sampler, layout);
-}
-
-void	VulkanRenderer::WriteTLASDescriptor(vk::DescriptorSet set, int bindingSlot, vk::AccelerationStructureKHR tlas) {
-	Vulkan::WriteTLASDescriptor(GetDevice(), set, bindingSlot, tlas);
-}
-
-void VulkanRenderer::DrawMeshLayer(const VulkanMesh& m, unsigned int layer, vk::CommandBuffer  to, int instanceCount) {
-	VkDeviceSize baseOffset = 0;
-
-	const SubMesh* sm = m.GetSubMesh(layer);
-
-	m.BindToCommandBuffer(to);
-
-	if (m.GetIndexCount() > 0) {
-		to.drawIndexed(sm->count, instanceCount, sm->start, sm->base, 0);
-	}
-	else {
-		to.draw(sm->count, instanceCount, sm->start, 0);
-	}
-}
-
-void VulkanRenderer::DrawMesh(vk::CommandBuffer  to, const VulkanMesh& m, int instanceCount) {
-	VkDeviceSize baseOffset = 0;
-
-	m.BindToCommandBuffer(to);
-
-	if (m.GetIndexCount() > 0) {
-		to.drawIndexed(m.GetIndexCount(), instanceCount, 0, 0, 0);
-	}
-	else {
-		to.draw(m.GetVertexCount(), instanceCount, 0, 0);
-	}
-}
-
 void	VulkanRenderer::BeginDefaultRenderPass(vk::CommandBuffer  cmds) {
 	cmds.beginRenderPass(defaultBeginInfo, vk::SubpassContents::eInline);
-	cmds.setViewport(0, 1, &defaultViewport);
-	cmds.setScissor(0, 1, &defaultScissor);
+	//cmds.setViewport(0, 1, &defaultViewport);
+	//cmds.setScissor(0, 1, &defaultScissor);
 }
 
 void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
@@ -737,7 +706,7 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 	renderInfo.layerCount = 1;
 
 	vk::RenderingAttachmentInfoKHR colourAttachment;
-	colourAttachment.setImageView(swapChainList[currentSwap]->view)
+	colourAttachment.setImageView(swapChainList[currentSwap]->colourView)
 		.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
 		.setLoadOp(vk::AttachmentLoadOp::eClear)
 		.setStoreOp(vk::AttachmentStoreOp::eStore)
@@ -760,7 +729,7 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 	cmds.setViewport(0, 1, &defaultViewport);
 	cmds.setScissor(0, 1, &defaultScissor);
 }
-
-vk::Format VulkanRenderer::GetDepthFormat() const {
-	return depthBuffer->GetFormat();
-}
+//
+//vk::Format VulkanRenderer::GetDepthFormat() const {
+//	return depthBuffer->GetFormat();
+//}

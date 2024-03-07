@@ -41,7 +41,7 @@ namespace NCL::Rendering::Vulkan {
 		vk::UniqueRenderPass Build(const std::string& name = "");
 
 	protected:
-		std::vector<vk::AttachmentDescription>	allDescriptions;
+		std::vector<vk::AttachmentDescription>		allDescriptions;
 		std::vector<vk::AttachmentReference>		allReferences;
 		vk::AttachmentReference depthReference;
 		vk::SubpassDescription	subPass;
