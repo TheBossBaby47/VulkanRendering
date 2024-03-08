@@ -79,6 +79,7 @@ namespace NCL::Rendering::Vulkan {
 		bool				autoTransitionFrameBuffer = true;
 		bool				autoBeginDynamicRendering = true;
 		bool				useOpenGLCoordinates = false;
+		bool				skipDynamicState = false;
 	};
 
 	class VulkanRenderer : public RendererBase {

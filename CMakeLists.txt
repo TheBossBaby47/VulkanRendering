@@ -23,6 +23,7 @@ set(Header_Files
     "VulkanTexture.h"
 	"VulkanBufferBuilder.h"
 	"SmartTypes.h"
+    "VulkanDescriptorSetWriter.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 

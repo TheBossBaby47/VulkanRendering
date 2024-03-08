@@ -518,8 +518,11 @@ void	VulkanRenderer::BeginFrame() {
 	frameCmds.reset({});
 
 	frameCmds.begin(vk::CommandBufferBeginInfo());
-	frameCmds.setViewport(0, 1, &defaultViewport);
-	frameCmds.setScissor(0, 1, &defaultScissor);
+
+	if (!vkInit.skipDynamicState) {
+		frameCmds.setViewport(0, 1, &defaultViewport);
+		frameCmds.setScissor(0, 1, &defaultScissor);
+	}
 
 	if (vkInit.autoTransitionFrameBuffer) {
 		WaitForSwapImage();
