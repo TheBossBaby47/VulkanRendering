@@ -274,6 +274,25 @@ void	Vulkan::WriteImageDescriptor(vk::Device device, vk::DescriptorSet set, uint
 	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 }
 
+void	Vulkan::WriteImageDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingNum, uint32_t subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
+	vk::DescriptorImageInfo imageInfo = {
+		.sampler = sampler,
+		.imageView = view,
+		.imageLayout = layout
+	};
+
+	vk::WriteDescriptorSet descriptorWrite = {
+		.dstSet = set,
+		.dstBinding = bindingNum,
+		.dstArrayElement = subIndex,
+		.descriptorCount = 1,
+		.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+		.pImageInfo = &imageInfo
+	};
+
+	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+}
+
 void	Vulkan::WriteStorageImageDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingNum, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
 	vk::DescriptorImageInfo imageInfo = {
 		.sampler		= sampler,

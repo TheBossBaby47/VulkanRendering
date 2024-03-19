@@ -24,6 +24,8 @@ set(Header_Files
 	"VulkanBufferBuilder.h"
 	"SmartTypes.h"
     "VulkanDescriptorSetWriter.h"
+    "VulkanDescriptorSetBinder.h"
+	"VulkanDescriptorBufferWriter.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
