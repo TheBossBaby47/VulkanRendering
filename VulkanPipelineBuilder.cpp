@@ -61,8 +61,8 @@ PipelineBuilder& PipelineBuilder::WithTopology(vk::PrimitiveTopology topology) {
 
 PipelineBuilder& PipelineBuilder::WithShader(const UniqueVulkanShader& shader) {
 	shader->FillShaderStageCreateInfo(pipelineCreate);
-		shader.get()->FillDescriptorSetLayouts(reflectionLayouts);
-		shader.get()->FillPushConstants(allPushConstants);
+	shader->FillDescriptorSetLayouts(reflectionLayouts);
+	shader->FillPushConstants(allPushConstants);
 	return *this;
 }
 

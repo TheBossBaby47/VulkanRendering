@@ -19,8 +19,8 @@ ComputePipelineBuilder::ComputePipelineBuilder(vk::Device device) : PipelineBuil
 
 ComputePipelineBuilder& ComputePipelineBuilder::WithShader(const UniqueVulkanCompute& compute) {
 	compute->FillShaderStageCreateInfo(pipelineCreate);
-	compute.get()->FillDescriptorSetLayouts(reflectionLayouts);
-	compute.get()->FillPushConstants(allPushConstants);
+	compute->FillDescriptorSetLayouts(reflectionLayouts);
+	compute->FillPushConstants(allPushConstants);
 	return *this;
 }
 
