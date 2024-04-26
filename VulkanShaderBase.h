@@ -9,6 +9,10 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 namespace NCL::Rendering::Vulkan {
 	class DescriptorSetLayoutBuilder;
+	/*
+	VulkanShaderBase: Holds the functionality common to all shaders, such
+	as descriptor layout reflection
+	*/
 	class VulkanShaderBase {
 	public:
 		friend class VulkanRenderer;

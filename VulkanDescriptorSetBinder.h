@@ -7,9 +7,18 @@ License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #pragma once
 namespace NCL::Rendering::Vulkan {
+	/*
+	DescriptorSetBinder: This helper class allows us to quickly bind multiple 
+	descriptor sets to the same pipeline. Each set is bound using the command
+	buffer at the point Bind is called, i.e. one at a time
+	*/
 	class DescriptorSetBinder {
 	public:
-		DescriptorSetBinder(vk::CommandBuffer inBuffer, vk::PipelineLayout inLayout, vk::PipelineBindPoint inBindpoint = vk::PipelineBindPoint::eGraphics) {
+		DescriptorSetBinder(vk::CommandBuffer inBuffer, 
+			vk::PipelineLayout inLayout, 
+			vk::PipelineBindPoint inBindpoint = vk::PipelineBindPoint::eGraphics) {
+			assert(inBuffer);
+			assert(inLayout);
 			buffer = inBuffer;
 			layout = inLayout;
 			bindPoint = inBindpoint;
@@ -23,13 +32,10 @@ namespace NCL::Rendering::Vulkan {
 		}
 
 		DescriptorSetBinder& Bind(vk::DescriptorSet set, uint32_t slot){
+			assert(set);
 			buffer.bindDescriptorSets(bindPoint, layout, slot, 1, &set, 0, nullptr);
 			return *this;
 		}
-
-		//void Commit(vk::CommandBuffer buffer, vk::PipelineLayout layout, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) {
-		//	//buffer.bindDescriptorSets(bindPoint, layout, 0, 4, sets, 0, nullptr);
-		//}
 
 	protected:
 		vk::CommandBuffer buffer;
@@ -37,6 +43,16 @@ namespace NCL::Rendering::Vulkan {
 		vk::PipelineBindPoint bindPoint;
 	};
 
+	/*
+	DescriptorSetMultiBinder: This helper class allows us to bind multiple
+	descriptor sets to one or more pipelines. The sets are only bound at
+	the point at which Commit is called, and will be done using as few
+	individual bind calls as possible i.e adjacent sets will be bound
+	together using a single vkBindDescriptorSets call. 
+
+	No state is maintained relating to buffers or layouts, so it is safe
+	to call Commit multiple times using different parameters. 
+	*/
 	class DescriptorSetMultiBinder {
 		const static int MAX_SET_ARRAY = 16;
 	public:
@@ -50,6 +66,7 @@ namespace NCL::Rendering::Vulkan {
 		}
 
 		DescriptorSetMultiBinder& Bind(vk::DescriptorSet set, uint32_t slot) {
+			assert(set);
 			assert(slot < slotOffset + MAX_SET_ARRAY);
 			sets[slot - slotOffset] = set;
 			firstSlot = std::min(slot, firstSlot);
@@ -59,6 +76,9 @@ namespace NCL::Rendering::Vulkan {
 		}
 
 		void Commit(vk::CommandBuffer buffer, vk::PipelineLayout layout, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) {
+			assert(buffer);
+			assert(layout);
+
 			if (lastSlot - firstSlot == slotCount-1) {
 				//It's a contiguous set list!
 				buffer.bindDescriptorSets(bindPoint, layout, firstSlot, slotCount, &sets[firstSlot - slotOffset], 0, nullptr);

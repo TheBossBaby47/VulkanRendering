@@ -8,6 +8,10 @@ License: MIT (see LICENSE file at the top of the source tree)
 #pragma once
 
 namespace NCL::Rendering::Vulkan {
+	/*
+	
+	
+	*/
 	class DescriptorBufferWriter {
 	public:
 		DescriptorBufferWriter(vk::Device inDevice, vk::DescriptorSetLayout inLayout, VulkanBuffer* inBuffer) {

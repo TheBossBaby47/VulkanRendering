@@ -21,6 +21,10 @@ namespace NCL::Rendering::Vulkan {
 		vk::ShaderStageFlagBits::eMeshNV
 	};
 
+	/*
+	VulkanShader: This class represents a single combined rasterisation shader,
+	that can comprise of multiple shader modules, one for each shader stage.
+	*/
 	class VulkanShader : public Shader, public VulkanShaderBase {
 	public:
 		friend class VulkanRenderer;
