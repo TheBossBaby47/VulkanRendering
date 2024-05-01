@@ -9,19 +9,19 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 namespace NCL::Rendering::Vulkan {
 	/*
-	
-	
+	DescriptorBufferWriter: A helper class for writing descriptors to a 
+	descriptor buffer. We MUST call Finish to ensure that the writes to the
+	buffer are synchronised, in case the buffer is not persistently mapped.
 	*/
 	class DescriptorBufferWriter {
 	public:
-		DescriptorBufferWriter(vk::Device inDevice, vk::DescriptorSetLayout inLayout, VulkanBuffer* inBuffer) {
+		DescriptorBufferWriter(vk::Device inDevice, vk::DescriptorSetLayout inLayout, VulkanBuffer& inBuffer)
+		 : destBuffer(inBuffer) {
 			device = inDevice;
-			destBuffer = inBuffer;
 			layout = inLayout;
-			descriptorBufferMemory = destBuffer->Map();
+			descriptorBufferMemory = destBuffer.Map();
 		}
-		DescriptorBufferWriter(const VulkanBuffer& buffer) {
-		}
+
 		~DescriptorBufferWriter() {
 			if (descriptorBufferMemory) {
 				Finish();
@@ -33,34 +33,52 @@ namespace NCL::Rendering::Vulkan {
 			return *this;
 		}
 
-		DescriptorBufferWriter& WriteUniformBuffer(uint32_t binding, VulkanBuffer* uniformBuffer) {
+		DescriptorBufferWriter& WriteBuffer(uint32_t binding, vk::DescriptorType type, const VulkanBuffer& buffer, uint32_t arrayIndex = 0) {
 			vk::DescriptorAddressInfoEXT descriptorAddress = {
-				.address = uniformBuffer->deviceAddress,
-				.range = uniformBuffer->size
+				.address	= buffer.deviceAddress,
+				.range		= buffer.size
 			};
 
 			vk::DescriptorGetInfoEXT getInfo = {
-				.type = vk::DescriptorType::eUniformBuffer,
+				.type = type,
 				.data = &descriptorAddress
 			};
 
 			vk::DeviceSize		offset = device.getDescriptorSetLayoutBindingOffsetEXT(layout, binding);
 
-			device.getDescriptorEXT(&getInfo, props->uniformBufferDescriptorSize, ((char*)descriptorBufferMemory) + offset);
+			device.getDescriptorEXT(&getInfo, Vulkan::GetDescriptorSize(type, *props), ((char*)descriptorBufferMemory) + offset);
 
 			return *this;
 		}
 
+		//DescriptorBufferWriter& WriteStorageBuffer(uint32_t binding, const VulkanBuffer& buffer) {
+		//	vk::DescriptorAddressInfoEXT descriptorAddress = {
+		//		.address = uniformBuffer.deviceAddress,
+		//		.range = uniformBuffer.size
+		//	};
+
+		//	vk::DescriptorGetInfoEXT getInfo = {
+		//		.type = vk::DescriptorType::eUniformBuffer,
+		//		.data = &descriptorAddress
+		//	};
+
+		//	vk::DeviceSize		offset = device.getDescriptorSetLayoutBindingOffsetEXT(layout, binding);
+
+		//	device.getDescriptorEXT(&getInfo, props->uniformBufferDescriptorSize, ((char*)descriptorBufferMemory) + offset);
+
+		//	return *this;
+		//}
+
 		void Finish() {
-			destBuffer->Unmap();
+			destBuffer.Unmap();
 			descriptorBufferMemory = nullptr;
 		}
+
 	protected:
 		vk::Device device;
-		VulkanBuffer* destBuffer;
+		VulkanBuffer& destBuffer;
 		void* descriptorBufferMemory;
 		vk::DescriptorSetLayout layout;
 		vk::PhysicalDeviceDescriptorBufferPropertiesEXT* props;
-
 	};
 };

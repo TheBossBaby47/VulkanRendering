@@ -83,4 +83,6 @@ namespace NCL::Rendering::Vulkan {
 		vk::DeviceAddress bufferAddress,
 		size_t bufferSize
 	);
+
+	size_t GetDescriptorSize(vk::DescriptorType type, const vk::PhysicalDeviceDescriptorBufferPropertiesEXT& props);
 }

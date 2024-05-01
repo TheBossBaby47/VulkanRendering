@@ -26,6 +26,10 @@ set(Header_Files
     "VulkanDescriptorSetWriter.h"
     "VulkanDescriptorSetBinder.h"
 	"VulkanDescriptorBufferWriter.h"
+	"VulkanBVHBuilder.h"
+	"VulkanRTShader.h" 
+	"VulkanRayTracingPipelineBuilder.h"	
+	"VulkanShaderBindingTableBuilder.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
@@ -46,6 +50,10 @@ set(Source_Files
     "VulkanShaderBuilder.cpp"
 	"VulkanBufferBuilder.cpp"
     "VulkanTexture.cpp"
+	"VulkanBVHBuilder.cpp"
+	"VulkanRTShader.cpp"   
+	"VulkanRayTracingPipelineBuilder.cpp"
+	"VulkanShaderBindingTableBuilder.cpp"	
 )
 source_group("Source Files" FILES ${Source_Files})
 

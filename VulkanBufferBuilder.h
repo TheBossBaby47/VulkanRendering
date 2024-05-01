@@ -24,7 +24,7 @@ namespace NCL::Rendering::Vulkan {
 
 		//Makes the buffer host visible, with mapping and random access
 		BufferBuilder& WithHostVisibility();
-
+		//Makes the buffer have an associated device address
 		BufferBuilder& WithDeviceAddress();
 
 		//Makes the buffer host coherent, with mapping and random access

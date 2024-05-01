@@ -53,7 +53,12 @@ BufferBuilder& BufferBuilder::WithHostVisibility() {
 
 	return *this;
 }
-
+/*
+This can be added via WithBufferUsage just fine, but it seems very
+separated from the other usages - everything else describes what
+you might want to store IN the buffer, while this is an intrinsic
+property OF the buffer(i.e it has an address, it doesn't store addresses)
+*/
 BufferBuilder& BufferBuilder::WithDeviceAddress() {
 	vkInfo.usage |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
 	return *this;
@@ -86,7 +91,6 @@ VulkanBuffer BufferBuilder::Build(size_t byteSize, const std::string& debugName)
 			{
 				.buffer = outputBuffer.buffer
 			}
-			//vk::BufferDeviceAddressInfo()
 		);
 	}
 

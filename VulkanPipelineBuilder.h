@@ -15,7 +15,16 @@ namespace NCL::Rendering::Vulkan {
 	using UniqueVulkanShader = std::unique_ptr<VulkanShader>;
 
 	struct VulkanVertexSpecification;
-
+	/*
+	PipelineBuilder: Builder class for rasterisation pipelines. 
+	The builder can automatically obtain descriptor set layouts and
+	push constants from the shader binary, so these don't have to be
+	manually added. By default, all pipelines will have two dynamic
+	states - the viewport and scissor region. The reasoning behind this
+	is that a) it means we don't have to recreate pipelines if the screen
+	is resized, and b) these both appear to be zero-cost on every platform
+	worth thinking about. 
+	*/
 	class PipelineBuilder	: public PipelineBuilderBase<PipelineBuilder, vk::GraphicsPipelineCreateInfo> {
 	public:
 		PipelineBuilder(vk::Device device);
@@ -54,6 +63,12 @@ namespace NCL::Rendering::Vulkan {
 		//A colour attachment, with user-defined state
 		PipelineBuilder& WithColourAttachment(vk::Format f, vk::PipelineColorBlendAttachmentState state);
 
+		//By default, pipelines have a dynamic viewport and scissor region.
+		//If you really want to, you can disable that here.
+		PipelineBuilder& WithoutDefaultDynamicState();
+
+		PipelineBuilder& WithDynamicState(vk::DynamicState state);
+
 		VulkanPipeline	Build(const std::string& debugName = "", vk::PipelineCache cache = {});
 
 	protected:
@@ -72,9 +87,11 @@ namespace NCL::Rendering::Vulkan {
 
 		std::vector< vk::PipelineColorBlendAttachmentState>			blendAttachStates;
 
-		vk::DynamicState dynamicStateEnables[2];
+		std::vector<vk::DynamicState> dynamicStates;
 
 		std::vector<vk::Format> allColourRenderingFormats;
 		vk::Format depthRenderingFormat;
+
+		bool ignoreDynamicDefaults;
 	};
 }

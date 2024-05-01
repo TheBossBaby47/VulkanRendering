@@ -385,3 +385,21 @@ void Vulkan::WriteBufferDescriptor(vk::Device device,
 
 	device.getDescriptorEXT(&getInfo, props.uniformBufferDescriptorSize, ((char*)descriptorBufferMemory) + offset);
 }
+
+size_t Vulkan::GetDescriptorSize(vk::DescriptorType type, const vk::PhysicalDeviceDescriptorBufferPropertiesEXT& props) {
+	switch (type) {
+		case vk::DescriptorType::eSampler:					return props.samplerDescriptorSize;
+		case vk::DescriptorType::eCombinedImageSampler:		return props.combinedImageSamplerDescriptorSize;
+		case vk::DescriptorType::eSampledImage:				return props.sampledImageDescriptorSize;
+		case vk::DescriptorType::eStorageImage:				return props.storageImageDescriptorSize;
+		case vk::DescriptorType::eUniformTexelBuffer:		return props.uniformTexelBufferDescriptorSize;
+		case vk::DescriptorType::eStorageTexelBuffer:		return props.storageTexelBufferDescriptorSize;
+		case vk::DescriptorType::eUniformBuffer:			return props.uniformBufferDescriptorSize;
+		case vk::DescriptorType::eStorageBuffer:			return props.storageBufferDescriptorSize;
+		case vk::DescriptorType::eUniformBufferDynamic:		return props.uniformBufferDescriptorSize;//??
+		case vk::DescriptorType::eStorageBufferDynamic:		return props.storageBufferDescriptorSize;//??
+		case vk::DescriptorType::eInputAttachment:			return props.inputAttachmentDescriptorSize;		
+		case vk::DescriptorType::eAccelerationStructureKHR: return props.accelerationStructureDescriptorSize;
+		default: return 0;
+	}
+};
