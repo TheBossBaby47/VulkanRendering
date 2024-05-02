@@ -672,9 +672,8 @@ void	VulkanRenderer::InitDefaultDescriptorPool(uint32_t maxSets) {
 		vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, maxSets),
 		vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, maxSets),
 		vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, maxSets),
-#ifdef USE_RAY_TRACING
+
 		vk::DescriptorPoolSize(vk::DescriptorType::eAccelerationStructureKHR, maxSets),
-#endif
 	};
 
 	uint32_t poolCount = sizeof(poolSizes) / sizeof(vk::DescriptorPoolSize);
