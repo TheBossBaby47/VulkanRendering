@@ -79,18 +79,18 @@ vk::UniqueAccelerationStructureKHR VulkanBVHBuilder::Build(vk::BuildAcceleration
 
 void VulkanBVHBuilder::BuildBLAS(vk::Device device, VmaAllocator allocator, vk::BuildAccelerationStructureFlagsKHR inFlags) {
 	//We need to first create the BLAS entries for the unique meshes
-	for (const auto& i : uniqueMeshes) {
+	for (const auto& i : meshes) {
 		vk::Buffer	vBuffer;
 		uint32_t	vOffset;
 		uint32_t	vRange;
 		vk::Format	vFormat;
-		i.first->GetAttributeInformation(NCL::VertexAttribute::Positions, vBuffer, vOffset, vRange, vFormat);
+		i->GetAttributeInformation(NCL::VertexAttribute::Positions, vBuffer, vOffset, vRange, vFormat);
 
 		vk::Buffer		iBuffer;
 		uint32_t		iOffset;
 		uint32_t		iRange;
 		vk::IndexType	iFormat;
-		bool hasIndices = i.first->GetIndexInformation(iBuffer, iOffset, iRange, iFormat);
+		bool hasIndices = i->GetIndexInformation(iBuffer, iOffset, iRange, iFormat);
 
 		//vk::AccelerationStructureGeometryTrianglesDataKHR triData;
 		//triData.vertexFormat = vFormat;
@@ -102,20 +102,18 @@ void VulkanBVHBuilder::BuildBLAS(vk::Device device, VmaAllocator allocator, vk::
 		triData.vertexData.deviceAddress = device.getBufferAddress({.buffer = vBuffer }) + vOffset;
 		triData.vertexStride = sizeof(Vector3);
 
-
-
 		if (hasIndices) {
 			triData.indexType = iFormat;
 			triData.indexData.deviceAddress = device.getBufferAddress({ .buffer = iBuffer} ) + iOffset;
 		}
 
-		triData.maxVertex = i.first->GetVertexCount();
+		triData.maxVertex = i->GetVertexCount();
 
 		blasBuildInfo.resize(blasBuildInfo.size() + 1);
 
 		BLASEntry& blasEntry = blasBuildInfo.back();
 
-		size_t subMeshCount = i.first->GetSubMeshCount();
+		size_t subMeshCount = i->GetSubMeshCount();
 
 		blasEntry.buildInfo.geometryCount	= subMeshCount;
 
@@ -124,7 +122,7 @@ void VulkanBVHBuilder::BuildBLAS(vk::Device device, VmaAllocator allocator, vk::
 		blasEntry.maxPrims.resize(subMeshCount);
 
 		for (int j = 0; j < subMeshCount; ++j) {
-			const SubMesh* m = i.first->GetSubMesh(j);
+			const SubMesh* m = i->GetSubMesh(j);
 
 			blasEntry.geometries[j].setGeometryType(vk::GeometryTypeKHR::eTriangles)
 												.setFlags(vk::GeometryFlagBitsKHR::eOpaque)
@@ -132,10 +130,10 @@ void VulkanBVHBuilder::BuildBLAS(vk::Device device, VmaAllocator allocator, vk::
 
 			blasEntry.geometries[j].geometry.triangles.maxVertex = m->count;
 
-			blasEntry.ranges[j].primitiveCount	= i.first->GetPrimitiveCount(j);
+			blasEntry.ranges[j].primitiveCount	= i->GetPrimitiveCount(j);
 			blasEntry.ranges[j].firstVertex		= m->base;
 			blasEntry.ranges[j].primitiveOffset = m->start *(iFormat == vk::IndexType::eUint32 ? 4 : 2);
-			blasEntry.maxPrims[j] = i.first->GetPrimitiveCount(j); 
+			blasEntry.maxPrims[j] = i->GetPrimitiveCount(j); 
 		}
 	}
 
