@@ -239,13 +239,13 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 	vk::PresentModeKHR currentPresentMode	= vk::PresentModeKHR::eFifo;
 
 	for (const auto& i : presentModes) {
-		if (i == vkInit.initialPresentMode) {
+		if (i == vkInit.idealPresentMode) {
 			currentPresentMode = i;
 			break;
 		}
 	}
 
-	if (currentPresentMode != vkInit.initialPresentMode) {
+	if (currentPresentMode != vkInit.idealPresentMode) {
 		std::cout << __FUNCTION__ << " Vulkan cannot use chosen present mode! Defaulting to FIFO...\n";
 	}
 
