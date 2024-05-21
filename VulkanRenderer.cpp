@@ -127,6 +127,9 @@ bool	VulkanRenderer::InitPhysicalDevice(const VulkanInitialisation& vkInit) {
 
 	std::cout << __FUNCTION__ << " Vulkan using physical device " << gpu.getProperties().deviceName << "\n";
 
+	vk::PhysicalDeviceProperties2 props;
+	gpu.getProperties2(&props);
+
 	return true;
 }
 
@@ -381,34 +384,43 @@ bool VulkanRenderer::InitDeviceQueueIndices() {
 	copyQueueIndex		= -1;
 	gfxPresentIndex		= -1;
 
+	int gfxBits		= INT_MAX;
+	int computeBits = INT_MAX;
+	int copyBits	= INT_MAX;
+
 	for (unsigned int i = 0; i < deviceQueueProps.size(); ++i) {
 		supportsPresent = gpu.getSurfaceSupportKHR(i, surface);
 
-		if (gfxQueueIndex == -1 && deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eGraphics) {
+		int queueBitCount = std::popcount((uint32_t)deviceQueueProps[i].queueFlags);
+
+		if (deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eGraphics && queueBitCount < gfxBits) {
 			gfxQueueIndex = i;
+			gfxBits = queueBitCount;
 			if (supportsPresent && gfxPresentIndex == -1) {
 				gfxPresentIndex = i;
 			}
 		}
 
-		if (i != gfxQueueIndex && computeQueueIndex == -1 && deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eCompute) {
+		if (deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eCompute && queueBitCount < computeBits) {
 			computeQueueIndex = i;
+			computeBits = queueBitCount;
 		}
 
-		if (i != gfxQueueIndex && copyQueueIndex == -1 && deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eTransfer) {
+		if (deviceQueueProps[i].queueFlags & vk::QueueFlagBits::eTransfer && queueBitCount < copyBits) {
 			copyQueueIndex = i;
+			copyBits = queueBitCount;
 		}
 	}
 
 	if (computeQueueIndex == -1) {
-		computeQueueIndex = gfxPresentIndex;
+		computeQueueIndex = gfxQueueIndex;
 	}
 	else {
 		std::cout << __FUNCTION__ << " Device supports async compute!\n";
 	}
 
 	if (copyQueueIndex == -1) {
-		copyQueueIndex = gfxPresentIndex;
+		copyQueueIndex = gfxQueueIndex;
 	}
 	else {
 		std::cout << __FUNCTION__ << " Device supports async copy!\n";
@@ -661,9 +673,8 @@ void	VulkanRenderer::InitDefaultDescriptorPool(uint32_t maxSets) {
 		vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, maxSets),
 		vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, maxSets),
 		vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, maxSets),
-#ifdef USE_RAY_TRACING
+
 		vk::DescriptorPoolSize(vk::DescriptorType::eAccelerationStructureKHR, maxSets),
-#endif
 	};
 
 	uint32_t poolCount = sizeof(poolSizes) / sizeof(vk::DescriptorPoolSize);
@@ -733,7 +744,3 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 	cmds.setViewport(0, 1, &defaultViewport);
 	cmds.setScissor(0, 1, &defaultScissor);
 }
-//
-//vk::Format VulkanRenderer::GetDepthFormat() const {
-//	return depthBuffer->GetFormat();
-//}

@@ -75,7 +75,7 @@ DynamicRenderBuilder& DynamicRenderBuilder::WithSecondaryCommandBuffers() {
 	return *this;
 }
 
-DynamicRenderBuilder& DynamicRenderBuilder::BeginRendering(vk::CommandBuffer  buffer) {
+const vk::RenderingInfoKHR& DynamicRenderBuilder::Build() {
 	renderInfo.setLayerCount(layerCount)
 		.setRenderArea(renderArea)
 		.setColorAttachments(colourAttachments)
@@ -84,7 +84,5 @@ DynamicRenderBuilder& DynamicRenderBuilder::BeginRendering(vk::CommandBuffer  bu
 	if (usingStencil) {
 		renderInfo.setPStencilAttachment(&depthAttachment);
 	}
-
-	buffer.beginRendering(renderInfo);
-	return *this;
+	return renderInfo;
 }

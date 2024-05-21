@@ -274,6 +274,25 @@ void	Vulkan::WriteImageDescriptor(vk::Device device, vk::DescriptorSet set, uint
 	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 }
 
+void	Vulkan::WriteImageDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingNum, uint32_t subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
+	vk::DescriptorImageInfo imageInfo = {
+		.sampler = sampler,
+		.imageView = view,
+		.imageLayout = layout
+	};
+
+	vk::WriteDescriptorSet descriptorWrite = {
+		.dstSet = set,
+		.dstBinding = bindingNum,
+		.dstArrayElement = subIndex,
+		.descriptorCount = 1,
+		.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+		.pImageInfo = &imageInfo
+	};
+
+	device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+}
+
 void	Vulkan::WriteStorageImageDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingNum, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
 	vk::DescriptorImageInfo imageInfo = {
 		.sampler		= sampler,
@@ -366,3 +385,21 @@ void Vulkan::WriteBufferDescriptor(vk::Device device,
 
 	device.getDescriptorEXT(&getInfo, props.uniformBufferDescriptorSize, ((char*)descriptorBufferMemory) + offset);
 }
+
+size_t Vulkan::GetDescriptorSize(vk::DescriptorType type, const vk::PhysicalDeviceDescriptorBufferPropertiesEXT& props) {
+	switch (type) {
+		case vk::DescriptorType::eSampler:					return props.samplerDescriptorSize;
+		case vk::DescriptorType::eCombinedImageSampler:		return props.combinedImageSamplerDescriptorSize;
+		case vk::DescriptorType::eSampledImage:				return props.sampledImageDescriptorSize;
+		case vk::DescriptorType::eStorageImage:				return props.storageImageDescriptorSize;
+		case vk::DescriptorType::eUniformTexelBuffer:		return props.uniformTexelBufferDescriptorSize;
+		case vk::DescriptorType::eStorageTexelBuffer:		return props.storageTexelBufferDescriptorSize;
+		case vk::DescriptorType::eUniformBuffer:			return props.uniformBufferDescriptorSize;
+		case vk::DescriptorType::eStorageBuffer:			return props.storageBufferDescriptorSize;
+		case vk::DescriptorType::eUniformBufferDynamic:		return props.uniformBufferDescriptorSize;//??
+		case vk::DescriptorType::eStorageBufferDynamic:		return props.storageBufferDescriptorSize;//??
+		case vk::DescriptorType::eInputAttachment:			return props.inputAttachmentDescriptorSize;		
+		case vk::DescriptorType::eAccelerationStructureKHR: return props.accelerationStructureDescriptorSize;
+		default: return 0;
+	}
+};

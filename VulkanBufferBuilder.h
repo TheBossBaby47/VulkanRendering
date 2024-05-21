@@ -18,13 +18,19 @@ namespace NCL::Rendering::Vulkan {
 
 		BufferBuilder& WithBufferUsage(vk::BufferUsageFlags flags);
 		BufferBuilder& WithBufferUsage(VkBufferUsageFlags flags);
+
 		BufferBuilder& WithMemoryProperties(vk::MemoryPropertyFlags flags);
 		BufferBuilder& WithMemoryProperties(VkMemoryPropertyFlags flags);
 
+		//Makes the buffer host visible, with mapping and random access
 		BufferBuilder& WithHostVisibility();
+		//Makes the buffer have an associated device address
 		BufferBuilder& WithDeviceAddress();
+
+		//Makes the buffer host coherent, with mapping and random access
 		BufferBuilder& WithPersistentMapping();
 
+		//Indicates to VMA that a new physical memory allocation must be made
 		BufferBuilder& WithUniqueAllocation();
 
 		~BufferBuilder() {};

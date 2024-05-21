@@ -8,6 +8,13 @@ License: MIT (see LICENSE file at the top of the source tree)
 #pragma once
 
 namespace NCL::Rendering::Vulkan {
+	/*
+	DynamicRenderBuilder: This helper class provides a means to create the 
+	vkRenderingInfoKHR struct used by the dynamic rendering extension.
+
+	Build returns one of these structs, and the class is designed to be used
+	as an anonymous instantiation as the parameter to vkCmdBeginRenderingKHR
+	*/
 	class DynamicRenderBuilder	{
 	public:
 		DynamicRenderBuilder();
@@ -37,7 +44,8 @@ namespace NCL::Rendering::Vulkan {
 
 		DynamicRenderBuilder& WithLayerCount(int count);
 
-		DynamicRenderBuilder& BeginRendering(vk::CommandBuffer  buffer);
+		const vk::RenderingInfoKHR& Build();
+
 	protected:
 		vk::RenderingInfoKHR renderInfo;
 		std::vector< vk::RenderingAttachmentInfoKHR > colourAttachments;

@@ -12,6 +12,9 @@ License: MIT (see LICENSE file at the top of the source tree)
 namespace NCL::Rendering::Vulkan {
 	class DescriptorSetLayoutBuilder;
 	class VulkanShader;
+	/*
+	ShaderBuilder: 
+	*/
 	class ShaderBuilder {
 	public:
 		ShaderBuilder(vk::Device device) { sourceDevice = device; };

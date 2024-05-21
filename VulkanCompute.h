@@ -9,6 +9,9 @@ License: MIT (see LICENSE file at the top of the source tree)
 #include "VulkanShaderBase.h"
 
 namespace NCL::Rendering::Vulkan {
+	/*
+	VulkanCompute: Represents a single computer shader object
+	*/
 	class VulkanCompute : public VulkanShaderBase	{
 	public:
 		VulkanCompute(vk::Device sourceDevice, const std::string& filename);

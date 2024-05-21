@@ -15,11 +15,7 @@ using namespace Rendering;
 using namespace Vulkan;
 
 PipelineBuilder::PipelineBuilder(vk::Device device) : PipelineBuilderBase(device)	{
-	dynamicStateEnables[0] = vk::DynamicState::eViewport;
-	dynamicStateEnables[1] = vk::DynamicState::eScissor;
-
-	dynamicCreate.setDynamicStateCount(2);
-	dynamicCreate.setPDynamicStates(dynamicStateEnables);
+	ignoreDynamicDefaults = false;
 
 	sampleCreate.setRasterizationSamples(vk::SampleCountFlagBits::e1);
 
@@ -61,8 +57,8 @@ PipelineBuilder& PipelineBuilder::WithTopology(vk::PrimitiveTopology topology) {
 
 PipelineBuilder& PipelineBuilder::WithShader(const UniqueVulkanShader& shader) {
 	shader->FillShaderStageCreateInfo(pipelineCreate);
-		shader.get()->FillDescriptorSetLayouts(reflectionLayouts);
-		shader.get()->FillPushConstants(allPushConstants);
+	shader->FillDescriptorSetLayouts(reflectionLayouts);
+	shader->FillPushConstants(allPushConstants);
 	return *this;
 }
 
@@ -122,6 +118,16 @@ PipelineBuilder& PipelineBuilder::WithColourAttachment(vk::Format f, vk::Pipelin
 	return *this;
 }
 
+PipelineBuilder& PipelineBuilder::WithoutDefaultDynamicState() {
+	ignoreDynamicDefaults = true;
+	return *this;
+}
+
+PipelineBuilder& PipelineBuilder::WithDynamicState(vk::DynamicState state) {
+	dynamicStates.push_back(state);
+	return *this;
+}
+
 PipelineBuilder& PipelineBuilder::WithDepthAttachment(vk::Format depthFormat) {
 	depthRenderingFormat = depthFormat;
 
@@ -166,6 +172,14 @@ PipelineBuilder& PipelineBuilder::WithTessellationPatchVertexCount(uint32_t cont
 VulkanPipeline	PipelineBuilder::Build(const std::string& debugName, vk::PipelineCache cache) {
 	blendCreate.setAttachments(blendAttachStates);
 	blendCreate.setBlendConstants({ 1.0f, 1.0f, 1.0f, 1.0f });
+
+	if (!ignoreDynamicDefaults)	{
+		dynamicStates.push_back(vk::DynamicState::eViewport);
+		dynamicStates.push_back(vk::DynamicState::eScissor);
+	}		
+
+	dynamicCreate.setDynamicStateCount(dynamicStates.size());
+	dynamicCreate.setPDynamicStates(dynamicStates.data());
 
 	vk::Format stencilRenderingFormat = vk::Format::eUndefined; //TODO
 

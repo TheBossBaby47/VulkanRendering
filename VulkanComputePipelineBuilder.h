@@ -12,7 +12,11 @@ License: MIT (see LICENSE file at the top of the source tree)
 
 namespace NCL::Rendering::Vulkan {
 	class VulkanCompute;
-
+	/*
+	ComputePipelineBuilder: A Builder class to automate the creation of 
+	compute pipelines, including the correct push constants and descriptor
+	set layouts, obtained from the shader module via reflection. 
+	*/
 	class ComputePipelineBuilder : public PipelineBuilderBase<ComputePipelineBuilder, vk::ComputePipelineCreateInfo>	{
 	public:
 		ComputePipelineBuilder(vk::Device device);
