@@ -62,6 +62,7 @@ namespace NCL::Rendering::Vulkan {
 
 	struct VulkanInitialisation {
 		vk::Format			depthStencilFormat = vk::Format::eD32SfloatS8Uint;
+		vk::PresentModeKHR  initialPresentMode = vk::PresentModeKHR::eFifo;
 
 		int majorVersion = 1;
 		int minorVersion = 1;

@@ -233,16 +233,17 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 
 	auto presentModes = gpu.getSurfacePresentModesKHR(surface); //Type is of vector of PresentModeKHR
 
-	vk::PresentModeKHR idealPresentMode = vk::PresentModeKHR::eFifo;
+	vk::PresentModeKHR currentPresentMode	= vk::PresentModeKHR::eFifo;
 
 	for (const auto& i : presentModes) {
-		if (i == vk::PresentModeKHR::eMailbox) {
-			idealPresentMode = i;
+		if (i == vkInit.initialPresentMode) {
+			currentPresentMode = i;
 			break;
 		}
-		else if (i == vk::PresentModeKHR::eImmediate) {
-			idealPresentMode = vk::PresentModeKHR::eImmediate; //Might still become mailbox...
-		}
+	}
+
+	if (currentPresentMode != vkInit.initialPresentMode) {
+		std::cout << __FUNCTION__ << " Vulkan cannot use chosen present mode! Defaulting to FIFO...\n";
 	}
 
 	vk::SurfaceTransformFlagBitsKHR idealTransform;
@@ -261,7 +262,7 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 
 	vk::SwapchainCreateInfoKHR swapInfo;
 
-	swapInfo.setPresentMode(idealPresentMode)
+	swapInfo.setPresentMode(currentPresentMode)
 		.setPreTransform(idealTransform)
 		.setSurface(surface)
 		.setImageColorSpace(surfaceSpace)
