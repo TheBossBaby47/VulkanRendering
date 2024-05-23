@@ -87,6 +87,7 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
     "$<$<COMPILE_LANGUAGE:CXX>:<iostream$<ANGLE-R>>"
     "$<$<COMPILE_LANGUAGE:CXX>:<string$<ANGLE-R>>"
     "$<$<COMPILE_LANGUAGE:CXX>:<iosfwd$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<functional$<ANGLE-R>>"
     
     "$<$<COMPILE_LANGUAGE:CXX>:<Vector.h$<ANGLE-R>>"
     "$<$<COMPILE_LANGUAGE:CXX>:<Matrix.h$<ANGLE-R>>"
