@@ -44,7 +44,7 @@ VulkanRenderer::VulkanRenderer(Window& window, const VulkanInitialisation& vkIni
 	InitDefaultDescriptorPool();
 	InitDefaultDescriptorSetLayouts();
 
-	hostWindow.SetRenderer(this);
+	OnWindowResize(window.GetScreenSize().x, window.GetScreenSize().y);
 
 	pipelineCache = device.createPipelineCache(vk::PipelineCacheCreateInfo());
 
@@ -290,6 +290,15 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 
 	auto images = device.getSwapchainImagesKHR(swapChain);
 
+	if (!swapFences.empty()) {
+		device.resetFences(swapFences);
+	}
+
+	for (int i = swapSemaphores.size(); i < images.size(); i++) {
+		swapSemaphores.push_back(device.createSemaphore({}));
+		swapFences.push_back(device.createFence({}));
+	}
+
 	for (auto& i : images) {
 		FrameState* chain = new FrameState();
 
@@ -316,9 +325,6 @@ uint32_t VulkanRenderer::InitBufferChain(vk::CommandBuffer  cmdBuffer) {
 		);
 		 
 		chain->cmdBuffer = buffers[0];
-
-		swapSemaphores.push_back(device.createSemaphore({}));
-		swapFences.push_back(device.createFence({}));
 
 		chain->acquireSempaphore = swapSemaphores[swapCycle];
 		chain->acquireFence		 = swapFences[swapCycle];
@@ -486,6 +492,8 @@ void VulkanRenderer::OnWindowResize(int width, int height) {
 	CompleteResize();
 
 	CmdBufferEndSubmitWait(*cmds, device, queueTypes[CommandBuffer::Graphics]);
+
+	device.waitIdle();
 }
 
 void VulkanRenderer::CompleteResize() {

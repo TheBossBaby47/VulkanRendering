@@ -136,15 +136,14 @@ namespace NCL::Rendering::Vulkan {
 		void EndFrame()			override;
 		void SwapBuffers()		override;
 
-	protected:
 		void OnWindowResize(int w, int h)	override;
+	protected:
 
 		virtual void	CompleteResize();
 		virtual void	InitDefaultRenderPass();
 		virtual void	InitDefaultDescriptorPool(uint32_t maxSets = 128);
 
 		virtual void WaitForSwapImage();
-
 
 	protected:
 		vk::DescriptorSetLayout defaultLayouts[DefaultSetLayouts::MAX_SIZE];		
