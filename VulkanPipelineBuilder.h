@@ -31,12 +31,14 @@ namespace NCL::Rendering::Vulkan {
 		~PipelineBuilder() {}
 
 		PipelineBuilder& WithRasterState(vk::CullModeFlagBits cullMode, vk::PolygonMode polyMode = vk::PolygonMode::eFill);
+		PipelineBuilder& WithRasterState(const vk::PipelineRasterizationStateCreateInfo& info);
+
 
 		PipelineBuilder& WithVertexInputState(const vk::PipelineVertexInputStateCreateInfo& spec);
 
 		PipelineBuilder& WithTessellationPatchVertexCount(uint32_t controlPointsPerPatch);
 
-		PipelineBuilder& WithTopology(vk::PrimitiveTopology topology);
+		PipelineBuilder& WithTopology(vk::PrimitiveTopology topology, bool primitiveRestart = false);
 
 		PipelineBuilder& WithShader(const UniqueVulkanShader& shader);
 		PipelineBuilder& WithShader(const VulkanShader& shader);

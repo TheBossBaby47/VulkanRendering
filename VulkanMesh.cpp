@@ -15,7 +15,7 @@ using namespace Rendering;
 using namespace Vulkan;
 
 //These are both carefully arranged to match the MeshBuffer enum class!
-vk::Format attributeFormats[] = {
+vk::Format attributeFormats[] = { 
 	vk::Format::eR32G32B32Sfloat,	//Positions have this format
 	vk::Format::eR32G32B32A32Sfloat,//Colours
 	vk::Format::eR32G32Sfloat,		//TexCoords
@@ -51,11 +51,11 @@ void VulkanMesh::UploadToGPU(RendererBase* r, vk::BufferUsageFlags extraUses) {
 
 	VulkanRenderer* renderer = (VulkanRenderer*)r;
 
-	vk::Queue gfxQueue		= renderer->GetQueue(CommandBuffer::Graphics);
-	vk::CommandPool pool	= renderer->GetCommandPool(CommandBuffer::Graphics);
+	vk::Queue gfxQueue		= renderer->GetQueue(CommandType::Graphics);
+	vk::CommandPool pool	= renderer->GetCommandPool(CommandType::Graphics);
 	vk::Device device		= renderer->GetDevice();
 
-	vk::UniqueCommandBuffer cmdBuffer = CmdBufferBegin(device, pool, "VulkanMesh upload");
+	vk::UniqueCommandBuffer cmdBuffer = CmdBufferCreateBegin(device, pool, "VulkanMesh upload");
 
 	size_t allocationSize = CalculateGPUAllocationSize();
 
@@ -169,7 +169,7 @@ void VulkanMesh::UploadToGPU(VulkanRenderer* renderer, VkQueue queue, vk::Comman
 }
 
 void VulkanMesh::BindToCommandBuffer(vk::CommandBuffer  buffer) const {
-	buffer.bindVertexBuffers(0, (unsigned int)usedBuffers.size(), &usedBuffers[0], &usedOffsets[0]);
+	buffer.bindVertexBuffers(0, usedBuffers.size(), &usedBuffers[0], &usedOffsets[0]);
 
 	if (GetIndexCount() > 0) {
 		buffer.bindIndexBuffer(gpuBuffer.buffer, indexOffset, indexType);

@@ -22,7 +22,6 @@ DynamicRenderBuilder& DynamicRenderBuilder::WithColourAttachment(vk::RenderingAt
 	return *this;
 }
 
-
 DynamicRenderBuilder& DynamicRenderBuilder::WithDepthAttachment(vk::RenderingAttachmentInfoKHR& info) {
 	depthAttachment = info;
 	//TODO check stencil state, maybe in Build...

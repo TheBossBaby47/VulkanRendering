@@ -22,22 +22,23 @@ DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDescriptor(vk::Descr
 	return *this;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDescriptors(const std::vector<vk::DescriptorSetLayoutBinding>& bindings, vk::DescriptorBindingFlags flags) {
-	addedBindings = bindings;
-	addedFlags = std::vector< vk::DescriptorBindingFlags>(addedBindings.size(), flags);
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDescriptor(vk::DescriptorType type, uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
+	vk::DescriptorSetLayoutBinding binding = {
+		.binding			= index,
+		.descriptorType		= type,
+		.descriptorCount	= count,
+		.stageFlags			= inShaders,
+	};
+
+	addedBindings.emplace_back(binding);
+	addedFlags.emplace_back(bindingFlags);
 
 	return *this;
 }
 
-DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDescriptor(vk::DescriptorType type, uint32_t index, unsigned int count, vk::ShaderStageFlags inShaders, vk::DescriptorBindingFlags bindingFlags) {
-	vk::DescriptorSetLayoutBinding binding = vk::DescriptorSetLayoutBinding()
-		.setBinding(index)
-		.setDescriptorCount(count)
-		.setStageFlags(inShaders)
-		.setDescriptorType(type);
-
-	addedBindings.emplace_back(binding);
-	addedFlags.emplace_back(bindingFlags);
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::WithDescriptors(const std::vector<vk::DescriptorSetLayoutBinding>& bindings, vk::DescriptorBindingFlags flags) {
+	addedBindings = bindings;
+	addedFlags = std::vector< vk::DescriptorBindingFlags>(addedBindings.size(), flags);
 
 	return *this;
 }

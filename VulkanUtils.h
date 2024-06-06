@@ -67,13 +67,15 @@ namespace NCL::Rendering::Vulkan {
 	void	WriteTLASDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingSlot, vk::AccelerationStructureKHR tlas);
 
 	vk::UniqueCommandBuffer	CmdBufferCreate(vk::Device device, vk::CommandPool fromPool, const std::string& debugName = "");
-	vk::UniqueCommandBuffer	CmdBufferBegin(vk::Device device, vk::CommandPool fromPool, const std::string& debugName = "");
+	vk::UniqueCommandBuffer	CmdBufferCreateBegin(vk::Device device, vk::CommandPool fromPool, const std::string& debugName = "");
 
 	void	CmdBufferResetBegin(vk::CommandBuffer  buffer);
 	void	CmdBufferResetBegin(const vk::UniqueCommandBuffer&  buffer);
 
 	void	CmdBufferEndSubmit(vk::CommandBuffer  buffer, vk::Queue queue, vk::Fence fence = {}, vk::Semaphore waitSemaphore = {}, vk::Semaphore signalSempahore = {});
 	void	CmdBufferEndSubmitWait(vk::CommandBuffer  buffer, vk::Device device, vk::Queue queue);
+	void	CmdBufferEndSubmitWait(vk::CommandBuffer  buffer, vk::Device device, vk::Queue queue, vk::Fence fence);
+
 
 	void WriteBufferDescriptor(vk::Device device,
 		const vk::PhysicalDeviceDescriptorBufferPropertiesEXT& props,

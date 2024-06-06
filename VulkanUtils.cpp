@@ -171,16 +171,6 @@ bool Vulkan::MessageAssert(bool condition, const char* msg) {
 	return condition;
 }
 
-void	Vulkan::CmdBufferResetBegin(vk::CommandBuffer  buffer) {
-	buffer.reset();
-	buffer.begin(vk::CommandBufferBeginInfo());
-}
-
-void	Vulkan::CmdBufferResetBegin(const vk::UniqueCommandBuffer&  buffer) {
-	buffer->reset();
-	buffer->begin(vk::CommandBufferBeginInfo());
-}
-
 vk::UniqueCommandBuffer	Vulkan::CmdBufferCreate(vk::Device device, vk::CommandPool fromPool, const std::string& debugName) {
 	std::vector<vk::UniqueCommandBuffer> buffers = device.allocateCommandBuffersUnique(
 		{
@@ -196,7 +186,17 @@ vk::UniqueCommandBuffer	Vulkan::CmdBufferCreate(vk::Device device, vk::CommandPo
 	return std::move(buffers[0]);
 }
 
-vk::UniqueCommandBuffer	Vulkan::CmdBufferBegin(vk::Device device, vk::CommandPool fromPool, const std::string& debugName) {
+void	Vulkan::CmdBufferResetBegin(vk::CommandBuffer  buffer) {
+	buffer.reset();
+	buffer.begin(vk::CommandBufferBeginInfo());
+}
+
+void	Vulkan::CmdBufferResetBegin(const vk::UniqueCommandBuffer& buffer) {
+	buffer->reset();
+	buffer->begin(vk::CommandBufferBeginInfo());
+}
+
+vk::UniqueCommandBuffer	Vulkan::CmdBufferCreateBegin(vk::Device device, vk::CommandPool fromPool, const std::string& debugName) {
 	vk::UniqueCommandBuffer buffer = CmdBufferCreate(device, fromPool, debugName);
 	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo();
 	buffer->begin(beginInfo);
@@ -217,13 +217,13 @@ void	Vulkan::CmdBufferEndSubmit(vk::CommandBuffer  buffer, vk::Queue queue, vk::
 	vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eTopOfPipe;
 
 	if (waitSemaphore) {
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &waitSemaphore;
-		submitInfo.pWaitDstStageMask = &waitStage;
+		submitInfo.waitSemaphoreCount	= 1;
+		submitInfo.pWaitSemaphores		= &waitSemaphore;
+		submitInfo.pWaitDstStageMask	= &waitStage;
 	}
 	if (signalSempahore) {
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &signalSempahore;
+		submitInfo.pSignalSemaphores	= &signalSempahore;
 	}
 
 	queue.submit(submitInfo, fence);
@@ -239,6 +239,14 @@ void		Vulkan::CmdBufferEndSubmitWait(vk::CommandBuffer  buffer, vk::Device devic
 	};
 
 	device.destroyFence(fence);
+}
+
+void	Vulkan::CmdBufferEndSubmitWait(vk::CommandBuffer  buffer, vk::Device device, vk::Queue queue, vk::Fence fence) {
+	CmdBufferEndSubmit(buffer, queue, fence);
+
+	if (device.waitForFences(1, &fence, true, UINT64_MAX) != vk::Result::eSuccess) {
+		std::cout << __FUNCTION__ << " Device queue submission taking too long?\n";
+	};
 }
 
 void	Vulkan::WriteDescriptor(vk::Device device, vk::WriteDescriptorSet setInfo, vk::DescriptorBufferInfo bufferInfo) {

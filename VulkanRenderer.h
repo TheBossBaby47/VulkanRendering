@@ -21,12 +21,13 @@ namespace NCL::Rendering::Vulkan {
 	class VulkanTexture;
 	struct VulkanBuffer;
 
-	namespace CommandBuffer {
+	namespace CommandType {
 		enum Type : uint32_t {
 			Graphics,
 			AsyncCompute,
 			Copy,
-			MAX_BUFFERS
+			Present,
+			MAX_COMMAND_TYPES
 		};
 	};
 	//Some auto-generated descriptor set layouts for quick prototyping
@@ -104,11 +105,15 @@ namespace NCL::Rendering::Vulkan {
 			return memoryAllocator;
 		}
 
-		vk::Queue GetQueue(CommandBuffer::Type type) const {
-			return queueTypes[type];
+		vk::Queue GetQueue(CommandType::Type type) const {
+			return queues[type];
 		}
 
-		vk::CommandPool GetCommandPool(CommandBuffer::Type type) const {
+		uint32_t GetQueueFamily(CommandType::Type type) const {
+			return queueFamilies[type];
+		}
+
+		vk::CommandPool GetCommandPool(CommandType::Type type) const {
 			return commandPools[type];
 		}
 
@@ -156,8 +161,9 @@ namespace NCL::Rendering::Vulkan {
 		
 		vk::DescriptorPool		defaultDescriptorPool;	//descriptor sets come from here!
 
-		vk::CommandPool			commandPools[CommandBuffer::Type::MAX_BUFFERS];
-		vk::Queue				queueTypes[CommandBuffer::Type::MAX_BUFFERS];
+		vk::CommandPool			commandPools[CommandType::Type::MAX_COMMAND_TYPES];
+		vk::Queue				queues[CommandType::Type::MAX_COMMAND_TYPES];
+		uint32_t				queueFamilies[CommandType::Type::MAX_COMMAND_TYPES];
 
 		vk::CommandBuffer		frameCmds;
 
@@ -198,12 +204,13 @@ namespace NCL::Rendering::Vulkan {
 		vk::Format			surfaceFormat;
 		vk::ColorSpaceKHR	surfaceSpace;
 
-		vk::Queue			presentQueue;
+		//vk::Queue			presentQueue;
 
-		uint32_t			gfxQueueIndex			= 0;
-		uint32_t			computeQueueIndex		= 0;
-		uint32_t			copyQueueIndex			= 0;
-		uint32_t			gfxPresentIndex			= 0;
+		//uint32_t			gfxQueueIndex			= 0;
+		//uint32_t			computeQueueIndex		= 0;
+		//uint32_t			copyQueueIndex			= 0;
+		//uint32_t			gfxPresentIndex			= 0;
+
 		uint32_t			numFrameBuffers			= 0;
 
 		std::vector<FrameState*> swapChainList;

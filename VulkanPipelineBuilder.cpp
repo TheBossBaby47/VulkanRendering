@@ -45,13 +45,18 @@ PipelineBuilder& PipelineBuilder::WithRasterState(vk::CullModeFlagBits cullMode,
 	return *this;
 }
 
+PipelineBuilder& PipelineBuilder::WithRasterState(const vk::PipelineRasterizationStateCreateInfo& info) {
+	rasterCreate = info;
+	return *this;
+}
+
 PipelineBuilder& PipelineBuilder::WithVertexInputState(const vk::PipelineVertexInputStateCreateInfo& spec) {
 	vertexCreate = spec;
 	return *this;
 }
 
-PipelineBuilder& PipelineBuilder::WithTopology(vk::PrimitiveTopology topology) {
-	inputAsmCreate.setTopology(topology);
+PipelineBuilder& PipelineBuilder::WithTopology(vk::PrimitiveTopology topology, bool primitiveRestart) {
+	inputAsmCreate.setTopology(topology).setPrimitiveRestartEnable(primitiveRestart);
 	return *this;
 }
 
@@ -68,7 +73,6 @@ PipelineBuilder& PipelineBuilder::WithShader(const VulkanShader& shader) {
 	shader.FillPushConstants(allPushConstants);
 	return *this;
 }
-
 
 PipelineBuilder& PipelineBuilder::WithPass(vk::RenderPass& renderPass) {
 	pipelineCreate.setRenderPass(renderPass);

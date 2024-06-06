@@ -117,7 +117,7 @@ void TextureBuilder::BeginTexture(const std::string& debugName, vk::UniqueComman
     }
     //We're in charge of our own command buffers
     else if (queue && pool) {
-        uniqueBuffer = Vulkan::CmdBufferBegin(sourceDevice, pool, debugName + " Creation");
+        uniqueBuffer = Vulkan::CmdBufferCreateBegin(sourceDevice, pool, debugName + " Creation");
         usingBuffer = *uniqueBuffer;
     }
     else {

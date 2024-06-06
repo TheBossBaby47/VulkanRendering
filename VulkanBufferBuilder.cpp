@@ -76,6 +76,11 @@ BufferBuilder& BufferBuilder::WithUniqueAllocation() {
 	return *this;
 }
 
+BufferBuilder& BufferBuilder::WithConcurrentSharing() {
+	vkInfo.sharingMode = vk::SharingMode::eConcurrent;
+	return *this;
+}
+
 VulkanBuffer BufferBuilder::Build(size_t byteSize, const std::string& debugName) {
 	VulkanBuffer	outputBuffer;
 

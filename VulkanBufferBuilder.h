@@ -33,6 +33,8 @@ namespace NCL::Rendering::Vulkan {
 		//Indicates to VMA that a new physical memory allocation must be made
 		BufferBuilder& WithUniqueAllocation();
 
+		BufferBuilder& WithConcurrentSharing();
+
 		~BufferBuilder() {};
 
 		VulkanBuffer Build(size_t byteSize, const std::string& name = "");
