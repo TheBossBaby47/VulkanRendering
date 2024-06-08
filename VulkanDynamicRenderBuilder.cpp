@@ -6,7 +6,6 @@ Contact:richgdavison@gmail.com
 License: MIT (see LICENSE file at the top of the source tree)
 *//////////////////////////////////////////////////////////////////////////////
 #include "VulkanDynamicRenderBuilder.h"
-#include "VulkanUtils.h"
 
 using namespace NCL;
 using namespace Rendering;
@@ -14,15 +13,15 @@ using namespace Vulkan;
 
 DynamicRenderBuilder::DynamicRenderBuilder() {
 	usingStencil	= false;
-	layerCount		= 1;
+	renderInfo.setLayerCount(1);
 }
 
-DynamicRenderBuilder& DynamicRenderBuilder::WithColourAttachment(vk::RenderingAttachmentInfoKHR& info) {
+DynamicRenderBuilder& DynamicRenderBuilder::WithColourAttachment(vk::RenderingAttachmentInfoKHR const&  info) {
 	colourAttachments.push_back(info);
 	return *this;
 }
 
-DynamicRenderBuilder& DynamicRenderBuilder::WithDepthAttachment(vk::RenderingAttachmentInfoKHR& info) {
+DynamicRenderBuilder& DynamicRenderBuilder::WithDepthAttachment(vk::RenderingAttachmentInfoKHR const&  info) {
 	depthAttachment = info;
 	//TODO check stencil state, maybe in Build...
 	return *this;
@@ -60,23 +59,32 @@ DynamicRenderBuilder& DynamicRenderBuilder::WithDepthAttachment(
 }
 
 DynamicRenderBuilder& DynamicRenderBuilder::WithRenderArea(vk::Rect2D area) {
-	renderArea = area;
+	renderInfo.setRenderArea(area);
 	return *this;
 }
 
 DynamicRenderBuilder& DynamicRenderBuilder::WithLayerCount(int count) {
-	layerCount = count;
+	renderInfo.setLayerCount(count);
 	return *this;
 }
 
-DynamicRenderBuilder& DynamicRenderBuilder::WithSecondaryCommandBuffers() {
-	renderInfo.flags |= vk::RenderingFlagBits::eContentsSecondaryCommandBuffers;
+DynamicRenderBuilder& DynamicRenderBuilder::WithRenderingFlags(vk::RenderingFlags flags) {
+	renderInfo.setFlags(flags);
+	return *this;
+}
+
+DynamicRenderBuilder& DynamicRenderBuilder::WithViewMask(uint32_t viewMask) {
+	renderInfo.setViewMask(viewMask);
+	return *this;
+}
+
+DynamicRenderBuilder& DynamicRenderBuilder::WithRenderInfo(vk::RenderingInfoKHR const& info) {
+	renderInfo = info;
 	return *this;
 }
 
 const vk::RenderingInfoKHR& DynamicRenderBuilder::Build() {
-	renderInfo.setLayerCount(layerCount)
-		.setRenderArea(renderArea)
+	renderInfo
 		.setColorAttachments(colourAttachments)
 		.setPDepthAttachment(&depthAttachment);
 
@@ -84,4 +92,8 @@ const vk::RenderingInfoKHR& DynamicRenderBuilder::Build() {
 		renderInfo.setPStencilAttachment(&depthAttachment);
 	}
 	return renderInfo;
+}
+
+void DynamicRenderBuilder::BeginRendering(vk::CommandBuffer cmdBuffer) {
+	cmdBuffer.beginRendering(Build());
 }
