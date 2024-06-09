@@ -124,7 +124,7 @@ bool	VulkanRenderer::InitPhysicalDevice(const VulkanInitialisation& vkInit) {
 
 	gpu = enumResult[0];
 	for (auto& i : enumResult) {
-		if (i.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu) {
+		if (i.getProperties().deviceType == vkInit.idealGPU) {
 			gpu = i; //Prefer a discrete GPU on multi device machines like laptops
 		}
 	}

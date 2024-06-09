@@ -65,6 +65,8 @@ namespace NCL::Rendering::Vulkan {
 		vk::Format			depthStencilFormat	= vk::Format::eD32SfloatS8Uint;
 		vk::PresentModeKHR  idealPresentMode	= vk::PresentModeKHR::eFifo;
 
+		vk::PhysicalDeviceType idealGPU		= vk::PhysicalDeviceType::eDiscreteGpu;
+
 		int majorVersion = 1;
 		int minorVersion = 1;
 
