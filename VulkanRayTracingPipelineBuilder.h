@@ -20,9 +20,8 @@ namespace NCL::Rendering::Vulkan {
 
 		VulkanRayTracingPipelineBuilder& WithShader(VulkanRTShader& shader, vk::ShaderStageFlagBits stage, const string& entry = "main");
 
-		VulkanRayTracingPipelineBuilder& WithShaderGroup(const vk::RayTracingShaderGroupCreateInfoKHR& group);
-
-		VulkanRayTracingPipelineBuilder& WithGeneralGroup(uint32_t index);
+		VulkanRayTracingPipelineBuilder& WithRayGenGroup(uint32_t shaderIndex);
+		VulkanRayTracingPipelineBuilder& WithMissGroup(uint32_t shaderIndex);
 		VulkanRayTracingPipelineBuilder& WithTriangleHitGroup(uint32_t closestHit = VK_SHADER_UNUSED_KHR, uint32_t anyHit = VK_SHADER_UNUSED_KHR);
 		VulkanRayTracingPipelineBuilder& WithProceduralHitGroup(uint32_t intersection, uint32_t closestHit = VK_SHADER_UNUSED_KHR, uint32_t anyHit = VK_SHADER_UNUSED_KHR);
 
@@ -39,9 +38,12 @@ namespace NCL::Rendering::Vulkan {
 
 		std::vector<ShaderEntry> entries;
 
-		//std::vector<vk::PipelineShaderStageCreateInfo>		shaderEntries;
 		std::vector<vk::PipelineShaderStageCreateInfo>		shaderStages;
-		std::vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroups;
+
+		std::vector<vk::RayTracingShaderGroupCreateInfoKHR> genGroups;
+		std::vector<vk::RayTracingShaderGroupCreateInfoKHR> missGroups;
+		std::vector<vk::RayTracingShaderGroupCreateInfoKHR> hitGroups;
+		std::vector<vk::RayTracingShaderGroupCreateInfoKHR> allGroups;
 
 		vk::PipelineDynamicStateCreateInfo			dynamicCreate;
 	};

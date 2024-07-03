@@ -25,24 +25,41 @@ VulkanRayTracingPipelineBuilder& VulkanRayTracingPipelineBuilder::WithRecursionD
 	return *this;
 }
 
-VulkanRayTracingPipelineBuilder& VulkanRayTracingPipelineBuilder::WithShaderGroup(const vk::RayTracingShaderGroupCreateInfoKHR& groupCreateInfo) {
-	shaderGroups.push_back(groupCreateInfo);
-	return *this;
-}
-
-VulkanRayTracingPipelineBuilder& VulkanRayTracingPipelineBuilder::WithGeneralGroup(uint32_t index) {
+VulkanRayTracingPipelineBuilder& VulkanRayTracingPipelineBuilder::WithRayGenGroup(uint32_t shaderIndex) {
 	vk::RayTracingShaderGroupCreateInfoKHR groupCreateInfo;
-
 	groupCreateInfo.type = vk::RayTracingShaderGroupTypeKHR::eGeneral;
-	groupCreateInfo.intersectionShader	= VK_SHADER_UNUSED_KHR;
-	groupCreateInfo.generalShader		= index;
-	groupCreateInfo.closestHitShader	= VK_SHADER_UNUSED_KHR;
-	groupCreateInfo.anyHitShader		= VK_SHADER_UNUSED_KHR;
-
-	shaderGroups.push_back(groupCreateInfo);
-
+	groupCreateInfo.generalShader = shaderIndex;
+	genGroups.push_back(groupCreateInfo);
 	return *this;
 }
+
+VulkanRayTracingPipelineBuilder& VulkanRayTracingPipelineBuilder::WithMissGroup(uint32_t shaderIndex) {
+	vk::RayTracingShaderGroupCreateInfoKHR groupCreateInfo;
+	groupCreateInfo.type = vk::RayTracingShaderGroupTypeKHR::eGeneral;
+	groupCreateInfo.generalShader = shaderIndex;
+	missGroups.push_back(groupCreateInfo);
+	return *this;
+}
+
+
+//VulkanRayTracingPipelineBuilder& VulkanRayTracingPipelineBuilder::WithShaderGroup(const vk::RayTracingShaderGroupCreateInfoKHR& groupCreateInfo) {
+//	shaderGroups.push_back(groupCreateInfo);
+//	return *this;
+//}
+//
+//VulkanRayTracingPipelineBuilder& VulkanRayTracingPipelineBuilder::WithGeneralGroup(uint32_t index) {
+//	vk::RayTracingShaderGroupCreateInfoKHR groupCreateInfo;
+//
+//	groupCreateInfo.type = vk::RayTracingShaderGroupTypeKHR::eGeneral;
+//	groupCreateInfo.intersectionShader	= VK_SHADER_UNUSED_KHR;
+//	groupCreateInfo.generalShader		= index;
+//	groupCreateInfo.closestHitShader	= VK_SHADER_UNUSED_KHR;
+//	groupCreateInfo.anyHitShader		= VK_SHADER_UNUSED_KHR;
+//
+//	shaderGroups.push_back(groupCreateInfo);
+//
+//	return *this;
+//}
 
 VulkanRayTracingPipelineBuilder& VulkanRayTracingPipelineBuilder::WithTriangleHitGroup(uint32_t closestHit, uint32_t anyHit) {
 	vk::RayTracingShaderGroupCreateInfoKHR groupCreateInfo;
@@ -53,7 +70,7 @@ VulkanRayTracingPipelineBuilder& VulkanRayTracingPipelineBuilder::WithTriangleHi
 	groupCreateInfo.closestHitShader	= closestHit;
 	groupCreateInfo.anyHitShader		= anyHit;
 
-	shaderGroups.push_back(groupCreateInfo);
+	hitGroups.push_back(groupCreateInfo);
 
 	return *this;
 }
@@ -67,8 +84,7 @@ VulkanRayTracingPipelineBuilder& VulkanRayTracingPipelineBuilder::WithProcedural
 	groupCreateInfo.closestHitShader	= closestHit;
 	groupCreateInfo.anyHitShader		= anyHit;
 
-	shaderGroups.push_back(groupCreateInfo);
-
+	hitGroups.push_back(groupCreateInfo);
 
 	return *this;
 }
@@ -99,8 +115,13 @@ VulkanPipeline VulkanRayTracingPipelineBuilder::Build(const std::string& debugNa
 
 	FinaliseDescriptorLayouts();
 
-	pipelineCreate.groupCount	= shaderGroups.size();
-	pipelineCreate.pGroups		= shaderGroups.data();
+	allGroups.clear();
+	allGroups.insert(allGroups.end(), genGroups.begin() , genGroups.end());
+	allGroups.insert(allGroups.end(), missGroups.begin(), missGroups.end());
+	allGroups.insert(allGroups.end(), hitGroups.begin() , hitGroups.end());
+
+	pipelineCreate.groupCount	= allGroups.size();
+	pipelineCreate.pGroups		= allGroups.data();
 
 	pipelineCreate.stageCount	= shaderStages.size();
 	pipelineCreate.pStages		= shaderStages.data();

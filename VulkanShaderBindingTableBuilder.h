@@ -15,8 +15,8 @@ namespace NCL::Rendering::Vulkan {
 	namespace BindingTableOrder {
 		enum Type : uint32_t {
 			RayGen,
-			Hit,
 			Miss,
+			Hit,
 			Call,
 			MAX_SIZE
 		};
@@ -24,14 +24,13 @@ namespace NCL::Rendering::Vulkan {
 
 	struct ShaderBindingTable {
 		VulkanBuffer tableBuffer;
-		//address, stride, size
-		vk::StridedDeviceAddressRegionKHR regions[4];
+		vk::StridedDeviceAddressRegionKHR regions[BindingTableOrder::MAX_SIZE];
 	};
 
 	class VulkanShaderBindingTableBuilder {
 	public:
 		VulkanShaderBindingTableBuilder(const std::string& debugName = "");
-		~VulkanShaderBindingTableBuilder();
+		~VulkanShaderBindingTableBuilder() = default;
 
 		VulkanShaderBindingTableBuilder& WithProperties(vk::PhysicalDeviceRayTracingPipelinePropertiesKHR properties);
 
@@ -42,8 +41,7 @@ namespace NCL::Rendering::Vulkan {
 		ShaderBindingTable Build(vk::Device device, VmaAllocator allocator);
 
 	protected:
-
-		void FillIndices(const vk::RayTracingPipelineCreateInfoKHR* fromInfo, int& offset);
+		void FillCounts(const vk::RayTracingPipelineCreateInfoKHR* fromInfo);
 
 		vk::PhysicalDeviceRayTracingPipelinePropertiesKHR properties;
 
@@ -55,6 +53,6 @@ namespace NCL::Rendering::Vulkan {
 
 		std::string debugName;
 
-		std::vector<uint32_t> handleIndices[BindingTableOrder::MAX_SIZE];
+		uint32_t handleCounts[BindingTableOrder::MAX_SIZE] = { };
 	};
 }
