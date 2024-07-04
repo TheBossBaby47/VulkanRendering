@@ -32,6 +32,9 @@ namespace NCL::Rendering::Vulkan {
 		//Builds an empty texture
 		UniqueVulkanTexture Build(const std::string& debugName = "");
 
+		//Builds a specifically sized texture using provided data is input
+		UniqueVulkanTexture BuildFromData(void* dataSrc, size_t byteCount, const std::string& debugName = "");
+
 		//Builds a texture loaded from file
 		UniqueVulkanTexture BuildFromFile(const std::string& filename);
 
@@ -57,9 +60,18 @@ namespace NCL::Rendering::Vulkan {
 			vk::Image		image;
 			vk::Fence		workFence;
 			vk::ImageLayout endLayout;
+			vk::ImageAspectFlags aspect;
+
 			VulkanBuffer	stagingBuffer;
 
-			std::vector<char*>dataSrcs;
+			size_t			faceByteCount;
+
+			NCL::Maths::Vector3i		dimensions;
+
+			uint32_t faceCount		= 0;
+
+			char* dataSrcs[6]		= { nullptr };
+			bool dataOwnership[6]	= { false };
 
 			TextureJob() {
 
@@ -70,7 +82,6 @@ namespace NCL::Rendering::Vulkan {
 				image = other.image;
 				workFence = other.workFence;
 				stagingBuffer = std::move(other.stagingBuffer);
-				dataSrcs = std::move(other.dataSrcs);
 			}
 
 			TextureJob(TextureJob&& other) {
@@ -78,7 +89,6 @@ namespace NCL::Rendering::Vulkan {
 				image = other.image;
 				workFence = other.workFence;
 				stagingBuffer = std::move(other.stagingBuffer);
-				dataSrcs = std::move(other.dataSrcs);
 			}
 		};
 
@@ -87,7 +97,7 @@ namespace NCL::Rendering::Vulkan {
 
 		UniqueVulkanTexture	GenerateTexture(vk::CommandBuffer cmdBuffer, Maths::Vector3i dimensions, bool isCube, const std::string& debugName);
 
-		void UploadTextureData(vk::CommandBuffer buffer, TextureJob& job, Maths::Vector3i dimensions, uint32_t channelCount, vk::ImageAspectFlags aspectFlags);
+		void UploadTextureData(vk::CommandBuffer buffer, TextureJob& job);
 
 		NCL::Maths::Vector3i	requestedSize;
 		uint32_t				layerCount;

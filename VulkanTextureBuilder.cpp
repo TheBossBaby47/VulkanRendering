@@ -110,6 +110,37 @@ UniqueVulkanTexture TextureBuilder::Build(const std::string& debugName) {
     return tex;
 }
 
+UniqueVulkanTexture TextureBuilder::BuildFromData(void* dataSrc, size_t byteCount, const std::string& debugName) {
+    vk::UniqueCommandBuffer	uniqueBuffer;
+    vk::CommandBuffer	    usingBuffer;
+    BeginTexture(debugName, uniqueBuffer, usingBuffer);
+
+    if (generateMips) {
+        usages |= vk::ImageUsageFlagBits::eTransferSrc;
+        usages |= vk::ImageUsageFlagBits::eTransferDst;
+    }
+
+    UniqueVulkanTexture tex = GenerateTexture(usingBuffer, requestedSize, false, debugName);
+
+    //ImageTransitionBarrier(usingBuffer, tex->GetImage(), vk::ImageLayout::eUndefined, layout, aspects, vk::PipelineStageFlagBits::eTopOfPipe, pipeFlags);
+
+    TextureJob job;
+    job.faceCount = 1;
+    job.dataSrcs[0] = (char*)dataSrc;
+    job.dataOwnership[0] = false;
+    job.image = tex->GetImage();
+    job.endLayout = layout;
+    job.aspect = vk::ImageAspectFlagBits::eColor;
+    job.faceByteCount = byteCount;
+    job.dimensions = requestedSize;
+
+    UploadTextureData(usingBuffer, job);
+
+    EndTexture(debugName, uniqueBuffer, usingBuffer, job, tex);
+
+    return tex;
+}
+
 void TextureBuilder::BeginTexture(const std::string& debugName, vk::UniqueCommandBuffer& uniqueBuffer, vk::CommandBuffer& usingBuffer) {
     //We're appending to an external command buffer
     if (cmdBuffer) {
@@ -137,8 +168,10 @@ void TextureBuilder::EndTexture(const std::string& debugName, vk::UniqueCommandB
     //If we're in charge of our own buffers, we just stop and wait for completion now
     if (uniqueBuffer) {
         CmdBufferEndSubmitWait(usingBuffer, sourceDevice, queue);
-        for (const auto& i : job.dataSrcs) {
-            TextureLoader::DeleteTextureData(i);
+        for (int i = 0; i < job.faceCount; ++i) {
+            if (job.dataOwnership[i]) {
+                TextureLoader::DeleteTextureData(job.dataSrcs[i]);
+            }
         }
     }
     //Otherwise, this is going to be handled external to the builder, and placed as a 'job'
@@ -172,11 +205,16 @@ UniqueVulkanTexture TextureBuilder::BuildFromFile(const std::string& filename) {
     UniqueVulkanTexture tex = GenerateTexture(usingBuffer, dimensions, false, filename);
 
     TextureJob job;
-    job.dataSrcs = {texData};
+    job.faceCount = 1;
+    job.dataSrcs[0] = texData;
+    job.dataOwnership[0] = true;
     job.image = tex->GetImage();
     job.endLayout = layout;
+    job.aspect = vk::ImageAspectFlagBits::eColor;
+    job.dimensions = dimensions;
+    job.faceByteCount = dimensions.x * dimensions.y * dimensions.z * channels * sizeof(char);
 
-    UploadTextureData(usingBuffer, job, dimensions, channels, vk::ImageAspectFlagBits::eColor);
+    UploadTextureData(usingBuffer, job);
 
     EndTexture(filename, uniqueBuffer, usingBuffer, job, tex);
 
@@ -192,8 +230,9 @@ UniqueVulkanTexture TextureBuilder::BuildCubemapFromFile(
     const std::string& debugName) {
 
     TextureJob job;
-    job.dataSrcs.resize(6);
+    job.faceCount = 6;
     job.endLayout = layout;
+    job.aspect = vk::ImageAspectFlagBits::eColor;
 
     Vector3i dimensions[6]{ Vector3i(0, 0, 1) };
     int channels[6] = { 0 };
@@ -210,6 +249,7 @@ UniqueVulkanTexture TextureBuilder::BuildCubemapFromFile(
 
     for (int i = 0; i < 6; ++i) {
         TextureLoader::LoadTexture(*filenames[i], job.dataSrcs[i], dimensions[i].x, dimensions[i].y, channels[i], flags[i]);
+        job.dataOwnership[i] = true;
     }
 
     vk::UniqueCommandBuffer	uniqueBuffer;
@@ -224,10 +264,16 @@ UniqueVulkanTexture TextureBuilder::BuildCubemapFromFile(
         usages |= vk::ImageUsageFlagBits::eTransferSrc;
     }
 
+    uint32_t dataWidth = sizeof(char) * channels[0];
+
+
+    job.faceByteCount = dimensions[0].x * dimensions[0].y * dimensions[0].z * channels[0] * sizeof(char);
+    job.dimensions = dimensions[0];
+
     UniqueVulkanTexture tex = GenerateTexture(usingBuffer, dimensions[0], true, debugName);
     job.image = tex->GetImage();
 
-    UploadTextureData(usingBuffer, job, dimensions[0], channels[0], vk::ImageAspectFlagBits::eColor);
+    UploadTextureData(usingBuffer, job);
     EndTexture(debugName, uniqueBuffer, usingBuffer, job, tex);
 
     usages = realUsages;
@@ -303,9 +349,8 @@ UniqueVulkanTexture	TextureBuilder::GenerateTexture(vk::CommandBuffer cmdBuffer,
     return UniqueVulkanTexture(t);
 }
 
-void TextureBuilder::UploadTextureData(vk::CommandBuffer buffer, TextureJob& job, Vector3i dimensions, uint32_t channelCount, vk::ImageAspectFlags aspectFlags) {
-    int faceSize = dimensions.x * dimensions.y * channelCount * sizeof(char); //TODO: Will loaded textures always be 8bpp?
-    int allocationSize = faceSize * (int)job.dataSrcs.size();
+void TextureBuilder::UploadTextureData(vk::CommandBuffer buffer, TextureJob& job) {
+    int allocationSize = job.faceByteCount * job.faceCount;
 
     job.stagingBuffer = BufferBuilder(sourceDevice, sourceAllocator)
         .WithBufferUsage(vk::BufferUsageFlagBits::eTransferSrc)
@@ -314,21 +359,24 @@ void TextureBuilder::UploadTextureData(vk::CommandBuffer buffer, TextureJob& job
 
     //our buffer now has memory! Copy some texture date to it...
     char* gpuPtr = (char*)job.stagingBuffer.Map();
-    for (int i = 0; i < job.dataSrcs.size(); ++i) {
-        memcpy(gpuPtr, job.dataSrcs[i], faceSize);
-        gpuPtr += faceSize;     
+    for (int i = 0; i < job.faceCount; ++i) {
+        memcpy(gpuPtr, job.dataSrcs[i], job.faceByteCount);
+        gpuPtr += job.faceByteCount;
     }
     job.stagingBuffer.Unmap();
 
     //We'll also set up each layer of the image to accept new transfers
-    ImageTransitionBarrier(buffer, job.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectFlags, vk::PipelineStageFlagBits2::eHost, vk::PipelineStageFlagBits2::eTransfer, 0, 1, 0);
+    ImageTransitionBarrier(buffer, job.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, job.aspect, vk::PipelineStageFlagBits2::eHost, vk::PipelineStageFlagBits2::eTransfer, 0, 1, 0);
     vk::BufferImageCopy copyInfo;
-    copyInfo.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor).setMipLevel(0).setLayerCount((uint32_t)job.dataSrcs.size());
-    copyInfo.imageExtent = vk::Extent3D(dimensions.x, dimensions.y, 1);
+    copyInfo.imageExtent = vk::Extent3D(job.dimensions.x, job.dimensions.y, 1);
+    copyInfo.imageSubresource
+        .setAspectMask(vk::ImageAspectFlagBits::eColor)
+        .setMipLevel(0)
+        .setLayerCount((uint32_t)job.faceCount);
 
     buffer.copyBufferToImage(job.stagingBuffer.buffer, job.image, vk::ImageLayout::eTransferDstOptimal, copyInfo);
 
-    ImageTransitionBarrier(buffer, job.image, vk::ImageLayout::eTransferDstOptimal, job.endLayout, aspectFlags, vk::PipelineStageFlagBits2::eTransfer, vk::PipelineStageFlagBits2::eFragmentShader, 0, 1);
+    ImageTransitionBarrier(buffer, job.image, vk::ImageLayout::eTransferDstOptimal, job.endLayout, job.aspect, vk::PipelineStageFlagBits2::eTransfer, vk::PipelineStageFlagBits2::eFragmentShader, 0, 1);
 }
 
 bool	TextureBuilder::IsProcessing() const {
