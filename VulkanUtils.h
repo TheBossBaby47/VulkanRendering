@@ -76,7 +76,6 @@ namespace NCL::Rendering::Vulkan {
 	void	CmdBufferEndSubmitWait(vk::CommandBuffer  buffer, vk::Device device, vk::Queue queue);
 	void	CmdBufferEndSubmitWait(vk::CommandBuffer  buffer, vk::Device device, vk::Queue queue, vk::Fence fence);
 
-
 	void WriteBufferDescriptor(vk::Device device,
 		const vk::PhysicalDeviceDescriptorBufferPropertiesEXT& props,
 		void* descriptorBufferMemory,
@@ -87,4 +86,6 @@ namespace NCL::Rendering::Vulkan {
 	);
 
 	size_t GetDescriptorSize(vk::DescriptorType type, const vk::PhysicalDeviceDescriptorBufferPropertiesEXT& props);
+
+	void  UploadTextureData(vk::CommandBuffer  buffer, vk::Buffer tempBuffer, vk::Image image, vk::ImageLayout currentLyout, vk::ImageLayout endLayout, vk::BufferImageCopy copyInfo);
 }

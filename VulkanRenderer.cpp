@@ -207,6 +207,14 @@ bool VulkanRenderer::InitGPUDevice(const VulkanInitialisation& vkInit) {
 	deviceProperties = gpu.getProperties();
 
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
+
+	vk::DebugUtilsMessengerCreateInfoEXT debugInfo;
+	debugInfo.pfnUserCallback = DebugCallbackFunction;
+	debugInfo.messageSeverity = vk::FlagTraits<vk::DebugUtilsMessageSeverityFlagBitsEXT>::allFlags;
+	debugInfo.messageType = vk::FlagTraits<vk::DebugUtilsMessageTypeFlagBitsEXT>::allFlags;
+
+	debugMessenger = instance.createDebugUtilsMessengerEXT(debugInfo);
+
 	return true;
 }
 
@@ -382,7 +390,7 @@ void	VulkanRenderer::InitMemoryAllocator(const VulkanInitialisation& vkInit) {
 }
 
 bool VulkanRenderer::InitDeviceQueueIndices() {
-	deviceQueueProps = gpu.getQueueFamilyProperties();
+	std::vector<vk::QueueFamilyProperties> deviceQueueProps = gpu.getQueueFamilyProperties();
 
 	VkBool32 supportsPresent = false;
 
@@ -744,4 +752,14 @@ void	VulkanRenderer::BeginDefaultRendering(vk::CommandBuffer  cmds) {
 	cmds.beginRendering(renderInfo);
 	cmds.setViewport(0, 1, &defaultViewport);
 	cmds.setScissor(0, 1, &defaultScissor);
+}
+
+VkBool32 VulkanRenderer::DebugCallbackFunction(
+	VkDebugUtilsMessageSeverityFlagBitsEXT           messageSeverity,
+	VkDebugUtilsMessageTypeFlagsEXT                  messageTypes,
+	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+	void* pUserData) {
+
+
+	return false;
 }

@@ -169,9 +169,6 @@ namespace NCL::Rendering::Vulkan {
 
 		vk::CommandBuffer		frameCmds;
 
-		//Initialisation Info
-		std::vector<vk::QueueFamilyProperties> deviceQueueProps;
-
 		UniqueVulkanTexture depthBuffer;
 
 		VmaAllocatorCreateInfo	allocatorInfo;
@@ -185,6 +182,12 @@ namespace NCL::Rendering::Vulkan {
 		bool	InitSurface();
 		void	InitMemoryAllocator(const VulkanInitialisation& vkInit);
 		uint32_t	InitBufferChain(vk::CommandBuffer  cmdBuffer);
+
+		static VkBool32 DebugCallbackFunction(
+			VkDebugUtilsMessageSeverityFlagBitsEXT           messageSeverity,
+			VkDebugUtilsMessageTypeFlagsEXT                  messageTypes,
+			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+			void* pUserData);
 
 		bool	InitDeviceQueueIndices();
 		bool	CreateDefaultFrameBuffers();
@@ -206,12 +209,7 @@ namespace NCL::Rendering::Vulkan {
 		vk::Format			surfaceFormat;
 		vk::ColorSpaceKHR	surfaceSpace;
 
-		//vk::Queue			presentQueue;
-
-		//uint32_t			gfxQueueIndex			= 0;
-		//uint32_t			computeQueueIndex		= 0;
-		//uint32_t			copyQueueIndex			= 0;
-		//uint32_t			gfxPresentIndex			= 0;
+		vk::DebugUtilsMessengerEXT debugMessenger;
 
 		uint32_t			numFrameBuffers			= 0;
 

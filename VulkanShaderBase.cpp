@@ -26,9 +26,8 @@ void	VulkanShaderBase::FillPushConstants(std::vector<vk::PushConstantRange>& con
 }
 
 vk::DescriptorSetLayout VulkanShaderBase::GetLayout(uint32_t index) const {
-	if (index >= allLayouts.size()) {
-		return vk::DescriptorSetLayout();
-	}
+	assert(index < allLayouts.size());
+	assert(!allLayouts.empty());
 	return *allLayouts[index];
 }
 

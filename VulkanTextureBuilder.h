@@ -66,7 +66,7 @@ namespace NCL::Rendering::Vulkan {
 
 			size_t			faceByteCount;
 
-			NCL::Maths::Vector3i		dimensions;
+			NCL::Maths::Vector3ui		dimensions;
 
 			uint32_t faceCount		= 0;
 
@@ -95,11 +95,11 @@ namespace NCL::Rendering::Vulkan {
 		void BeginTexture(const std::string& debugName, vk::UniqueCommandBuffer& uniqueBuffer, vk::CommandBuffer& usingBuffer);
 		void EndTexture(const std::string& debugName, vk::UniqueCommandBuffer& uniqueBuffer, vk::CommandBuffer& usingBuffer, TextureJob& job, UniqueVulkanTexture& t);
 
-		UniqueVulkanTexture	GenerateTexture(vk::CommandBuffer cmdBuffer, Maths::Vector3i dimensions, bool isCube, const std::string& debugName);
+		UniqueVulkanTexture	GenerateTexture(vk::CommandBuffer cmdBuffer, Maths::Vector3ui dimensions, bool isCube, const std::string& debugName);
 
 		void UploadTextureData(vk::CommandBuffer buffer, TextureJob& job);
 
-		NCL::Maths::Vector3i	requestedSize;
+		NCL::Maths::Vector3ui	requestedSize;
 		uint32_t				layerCount;
 		bool					generateMips;
 

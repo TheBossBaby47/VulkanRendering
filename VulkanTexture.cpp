@@ -43,8 +43,8 @@ void VulkanTexture::GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout e
 				.setBaseArrayLayer(layer)
 				.setLayerCount(1);
 			blitData.srcOffsets[0] = vk::Offset3D(0, 0, 0);
-			blitData.srcOffsets[1].x = std::max(dimensions.x >> (mip - 1), 1);
-			blitData.srcOffsets[1].y = std::max(dimensions.y >> (mip - 1), 1);
+			blitData.srcOffsets[1].x = std::max(dimensions.x >> (mip - 1), (uint32_t)1);
+			blitData.srcOffsets[1].y = std::max(dimensions.y >> (mip - 1), (uint32_t)1);
 			blitData.srcOffsets[1].z = 1;
 
 			blitData.dstSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
@@ -52,8 +52,8 @@ void VulkanTexture::GenerateMipMaps(vk::CommandBuffer  buffer, vk::ImageLayout e
 				.setLayerCount(1)
 				.setBaseArrayLayer(layer);
 			blitData.dstOffsets[0] = vk::Offset3D(0, 0, 0);
-			blitData.dstOffsets[1].x = std::max(dimensions.x >> mip, 1);
-			blitData.dstOffsets[1].y = std::max(dimensions.y >> mip, 1);
+			blitData.dstOffsets[1].x = std::max(dimensions.x >> mip, (uint32_t)1);
+			blitData.dstOffsets[1].y = std::max(dimensions.y >> mip, (uint32_t)1);
 			blitData.dstOffsets[1].z = 1;
 
 			ImageTransitionBarrier(buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, aspectType, vk::PipelineStageFlagBits2::eHost, vk::PipelineStageFlagBits2::eTransfer, mip, 1, layer, 1);

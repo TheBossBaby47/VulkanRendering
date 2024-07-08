@@ -31,7 +31,6 @@ void Vulkan::SetDebugName(vk::Device device, vk::ObjectType t, uint64_t handle, 
 void Vulkan::BeginDebugArea(vk::CommandBuffer b, const std::string& name) {
 	vk::DebugUtilsLabelEXT labelInfo;
 	labelInfo.pLabelName = name.c_str();
-
 	b.beginDebugUtilsLabelEXT(labelInfo);
 }
 
@@ -411,3 +410,23 @@ size_t Vulkan::GetDescriptorSize(vk::DescriptorType type, const vk::PhysicalDevi
 		default: return 0;
 	}
 };
+
+void  Vulkan::UploadTextureData(vk::CommandBuffer  buffer, vk::Buffer tempBuffer, vk::Image image, vk::ImageLayout currentLyout, vk::ImageLayout endLayout, vk::BufferImageCopy copyInfo) {
+	ImageTransitionBarrier(buffer, image, 
+		currentLyout, 
+		vk::ImageLayout::eTransferDstOptimal, 
+		copyInfo.imageSubresource.aspectMask, 
+		vk::PipelineStageFlagBits2::eHost, 
+		vk::PipelineStageFlagBits2::eTransfer, 
+		0, 1);
+
+	buffer.copyBufferToImage(tempBuffer, image, vk::ImageLayout::eTransferDstOptimal, copyInfo);
+
+	ImageTransitionBarrier(buffer, image, 
+		vk::ImageLayout::eTransferDstOptimal, 
+		endLayout, 
+		copyInfo.imageSubresource.aspectMask, 
+		vk::PipelineStageFlagBits2::eTransfer, 
+		vk::PipelineStageFlagBits2::eAllCommands,
+		0, 1);
+}
