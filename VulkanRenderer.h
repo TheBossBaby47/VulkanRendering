@@ -103,6 +103,10 @@ namespace NCL::Rendering::Vulkan {
 			return gpu;
 		}
 
+		vk::Instance	GetVulkanInstance() const {
+			return instance;
+		}
+
 		VmaAllocator GetMemoryAllocator() const {
 			return memoryAllocator;
 		}
