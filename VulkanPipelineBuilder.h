@@ -73,6 +73,10 @@ namespace NCL::Rendering::Vulkan {
 
 		VulkanPipeline	Build(const std::string& debugName = "", vk::PipelineCache cache = {});
 
+		vk::PipelineRenderingCreateInfoKHR& GetRenderingCreateInfo()  {
+			return renderingCreate;
+		}
+
 	protected:
 		vk::PipelineCacheCreateInfo					cacheCreate;
 		vk::PipelineInputAssemblyStateCreateInfo	inputAsmCreate;
@@ -84,6 +88,8 @@ namespace NCL::Rendering::Vulkan {
 		vk::PipelineDynamicStateCreateInfo			dynamicCreate;
 		vk::PipelineVertexInputStateCreateInfo		vertexCreate;
 		vk::PipelineTessellationStateCreateInfo		tessellationCreate;
+
+		vk::PipelineRenderingCreateInfoKHR			renderingCreate;
 
 		vk::PipelineLayout							externalLayout;
 

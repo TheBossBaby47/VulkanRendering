@@ -215,7 +215,6 @@ VulkanPipeline	PipelineBuilder::Build(const std::string& debugName, vk::Pipeline
 	}
 
 	//We must be using dynamic rendering, better set it up!
-	vk::PipelineRenderingCreateInfoKHR			renderingCreate;
 	if (!allColourRenderingFormats.empty() || depthRenderingFormat != vk::Format::eUndefined) {
 		renderingCreate.depthAttachmentFormat		= depthRenderingFormat;
 		renderingCreate.stencilAttachmentFormat		= stencilRenderingFormat;
