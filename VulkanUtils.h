@@ -59,7 +59,7 @@ namespace NCL::Rendering::Vulkan {
 
 	void	WriteDescriptor(vk::Device device, vk::WriteDescriptorSet setInfo, vk::DescriptorBufferInfo bufferInfo);
 	void	WriteDescriptor(vk::Device device, vk::WriteDescriptorSet setInfo, vk::DescriptorImageInfo imageInfo);
-
+	void	WriteDescriptor(vk::Device device, vk::WriteDescriptorSet setInfo, const std::vector<vk::DescriptorImageInfo>& inImageInfoList);
 	void	WriteBufferDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingSlot, vk::DescriptorType bufferType, vk::Buffer buff, size_t offset = 0, size_t range = VK_WHOLE_SIZE);
 	void	WriteImageDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingSlot, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
 	void	WriteImageDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingSlot, uint32_t subIndex, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);

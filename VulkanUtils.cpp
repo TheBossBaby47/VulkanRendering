@@ -262,6 +262,21 @@ void	Vulkan::WriteDescriptor(vk::Device device, vk::WriteDescriptorSet setInfo, 
 	device.updateDescriptorSets(1, &setInfo, 0, nullptr);
 }
 
+void Vulkan::WriteDescriptor(vk::Device device, vk::WriteDescriptorSet setInfo, const std::vector<vk::DescriptorImageInfo>& inImageInfoList)
+{
+	std::vector< vk::WriteDescriptorSet> tempList(inImageInfoList.size());
+	for (size_t i = 0; i < inImageInfoList.size(); i++)
+	{
+		tempList[i].descriptorCount = setInfo.descriptorCount;
+		tempList[i].dstBinding = setInfo.dstBinding;
+		tempList[i].dstSet = setInfo.dstSet;
+		tempList[i].pImageInfo = inImageInfoList.data();
+		tempList[i].descriptorType = setInfo.descriptorType;
+	}
+	setInfo.pImageInfo = inImageInfoList.data();
+	device.updateDescriptorSets(static_cast<uint32_t>(setInfo.descriptorCount), tempList.data(), 0, nullptr);
+}
+
 void	Vulkan::WriteImageDescriptor(vk::Device device, vk::DescriptorSet set, uint32_t bindingNum, vk::ImageView view, vk::Sampler sampler, vk::ImageLayout layout) {
 	vk::DescriptorImageInfo imageInfo = {
 		.sampler = sampler,
